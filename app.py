@@ -6,7 +6,7 @@ st.title("🛡️ Áurea Cred - Simulador de Eficiência de Capital")
 st.caption("Modelagem Financeira Avançada de Alavancagem Concomitante Progressiva")
 
 # =========================================================================
-# 1. PAINEL DE CONTROLE LATERAL (INPUTS)
+# 1. PAINEL DE CONTROLE LATERAL (INPUTS COM VALOR PADRÃO AUTOMÁTICO)
 # =========================================================================
 st.sidebar.header("⚙️ Premissas Operacionais")
 v_vgv = st.sidebar.number_input("Valor Geral de Vendas (VGV)", min_value=100000.0, value=3000000.0, step=100000.0, format="%.2f")
@@ -15,7 +15,8 @@ v_terr = st.sidebar.number_input("Valor de Avaliação do Terreno", min_value=0.
 
 status_terreno = st.sidebar.selectbox("O Terreno está Quitado?", ["Sim", "Não"])
 if status_terreno == "Não":
-    saldo_devedor_terreno = st.sidebar.number_input("Valor a Amortizar do Terreno (Dívida no Banco)", min_value=0.0, value=200000.0, step=10000.0, format="%.2f")
+    # MODIFICAÇÃO SOLICITADA: O valor padrão (value) agora assume exatamente a variável v_terr
+    saldo_devedor_terreno = st.sidebar.number_input("Valor a Amortizar do Terreno (Dívida no Banco)", min_value=0.0, value=v_terr, step=10000.0, format="%.2f")
 else:
     saldo_devedor_terreno = 0.00
 
@@ -113,7 +114,6 @@ tab1, tab2 = st.tabs(["📊 Mesa de Eficiência de Capital", "🧮 Cronograma M�
 with tab1:
     st.subheader("Análise Comparativa de Indicadores de Retorno (Visão Consolidada)")
     
-    # Remoção das quebras com hífens e pontos que geravam marcadores de lista
     df_resumo = pd.DataFrame({
         "Estrutura de Análise de Capital": [
             "Valor de Venda (VGV)", "(-) Crédito Estruturado Tomado", "(-) Quitação da Dívida de Saída", "(=) Receita Líquida pós-Quitação",
