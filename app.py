@@ -79,9 +79,10 @@ for i in range(m_venda + 1):
             if caixa_pres_sac > 0: ganho_cdi_sac += caixa_pres_sac * tx_cdi
             if caixa_pres_prc > 0: ganho_cdi_price += caixa_pres_prc * tx_cdi
 
+        txt_ap = f"R$ {(credito_bancario / 6) if i==0 else ap_val:,.2f}"
         cronograma_data.append({
             "Período": f"Mês {i}",
-            "Aporte Obra": f"R$ {ap_val:,.2f}" if i>0 else f"R$ {(credito_bancario/6):,.2f}",
+            "Aporte Obra": txt_ap,
             "Parcela SAC": f"R$ {p_sac_v:,.2f}",
             "Saldo SAC": f"R$ {s_sac:,.2f}",
             "Parcela PRICE": f"R$ {p_pr_v:,.2f}",
@@ -105,35 +106,36 @@ moic_sac = (v_vgv - s_sac + ganho_cdi_sac) / invest_bolso_sac
 moic_price = (v_vgv - s_pr + ganho_cdi_price) / invest_bolso_price
 
 # =========================================================================
-# 3. INTERFACE GRÁFICA ATUALIZADA COM AS 3 COLUNAS COMPLETAS
+# 3. INTERFACE GRÁFICA CORRIGIDA (SEM BULLETS VISUAIS)
 # =========================================================================
 tab1, tab2 = st.tabs(["📊 Mesa de Eficiência de Capital", "🧮 Cronograma Mês a Mês Automatizado"])
 
 with tab1:
     st.subheader("Análise Comparativa de Indicadores de Retorno (Visão Consolidada)")
     
+    # Remoção das quebras com hífens e pontos que geravam marcadores de lista
     df_resumo = pd.DataFrame({
         "Estrutura de Análise de Capital": [
             "Valor de Venda (VGV)", "(-) Crédito Estruturado Tomado", "(-) Quitação da Dívida de Saída", "(=) Receita Líquida pós-Quitação",
-            "(-) Investimento Real do Bolso", "   • Desembolso p/ Aquisição/Terreno", "   • Contrapartida Inicial (Gargalo LTV)", "   • Desembolso de Parcelas (Caixa)",
-            "(=) LUCRO OPERACIONAL DO TIJOLO", "   • ROI Operacional do Empreendimento", "   • Rendimento Mensal do Empreendimento",
-            "(+) RENDIMENTO DO CAPITAL PRESERVADO (CDI)", "   • ROI Adicional Gerado pelo CDI", "   • Rendimento Mensal Adicional (CDI)",
+            "(-) Investimento Real do Bolso", "  - Desembolso p/ Aquisição/Terreno", "  - Contrapartida Inicial (Gargalo LTV)", "  - Desembolso de Parcelas (Caixa)",
+            "(=) LUCRO OPERACIONAL DO TIJOLO", "  - ROI Operacional do Empreendimento", "  - Rendimento Mensal do Empreendimento",
+            "(+) RENDIMENTO DO CAPITAL PRESERVADO (CDI)", "  - ROI Adicional Gerado pelo CDI", "  - Rendimento Mensal Adicional (CDI)",
             "(=) BENEFÍCIO FINANCEIRO COMBINADO", "Múltiplo de Capital Combinado (MOIC)", "🔥 Rendimento Mensal Combinado Total"
         ],
         "Cenário A: Próprio": [
-            f"R$ {v_vgv:,.2f}", "R$ 0.00", "R$ 0.00", f"R$ {v_vgv:,.2f}", f"- R$ {invest_bolso_proprio:,.2f}", f"R$ {desembolso_inicial_terr:,.2f}", "R$ 0.00", f"R$ {v_obra:,.2f}",
+            f"R$ {v_vgv:,.2f}", "R$ 0.00", "R$ 0.00", f"R$ {v_vgv:,.2f}", f"R$ {invest_bolso_proprio:,.2f}", f"R$ {desembolso_inicial_terr:,.2f}", "R$ 0.00", f"R$ {v_obra:,.2f}",
             f"R$ {l_proprio:,.2f}", f"{(l_proprio/invest_bolso_proprio)*100:.2f}%", f"{((l_proprio/invest_bolso_proprio)*100)/m_venda:.2f}%/mês",
             "R$ 0.00", "0.00%", "0.00%/mês", f"R$ {l_proprio:,.2f}", f"{moic_proprio:.2f}x", f"{((l_proprio/invest_bolso_proprio)*100)/m_venda:.2f}%/mês"
         ],
         "Cenário B: SAC": [
-            f"R$ {v_vgv:,.2f}", f"R$ {credito_bancario:,.2f}", f"- R$ {s_sac:,.2f}", f"R$ {(v_vgv - s_sac):,.2f}", f"- R$ {invest_bolso_sac:,.2f}", f"R$ {desembolso_inicial_terr:,.2f}", f"R$ {recurso_proprio_comp:,.2f}", f"R$ {total_p_sac:,.2f}",
+            f"R$ {v_vgv:,.2f}", f"R$ {credito_bancario:,.2f}", f"R$ {s_sac:,.2f}", f"R$ {(v_vgv - s_sac):,.2f}", f"R$ {invest_bolso_sac:,.2f}", f"R$ {desembolso_inicial_terr:,.2f}", f"R$ {recurso_proprio_comp:,.2f}", f"R$ {total_p_sac:,.2f}",
             f"R$ {l_sac_tijolo:,.2f}", f"{(l_sac_tijolo/invest_bolso_sac)*100:.2f}%", f"{((l_sac_tijolo/invest_bolso_sac)*100)/m_venda:.2f}%/mês",
-            f"R$ {ganho_cdi_sac:,.2f}", f"{(ganho_cdi_sac/invest_bolso_sac)*100:.2f}%", f"{(ganho_cdi_sac/invest_bolso_sac*100)/m_venda:.2f}%/mês", f"R$ {l_sac_total:,.2f}", f"{moic_sac:.2f}x", f"{(l_sac_total/invest_bolso_sac*100)/m_venda:.2f}%/mês"
+            f"R$ {ganho_cdi_sac:,.2f}", f"{(gan_cdi := (ganho_cdi_sac/invest_bolso_sac)*100):.2f}%", f"{gan_cdi/m_venda:.2f}%/mês", f"R$ {l_sac_total:,.2f}", f"{moic_sac:.2f}x", f"{(l_sac_total/invest_bolso_sac*100)/m_venda:.2f}%/mês"
         ],
         "Cenário C: PRICE": [
-            f"R$ {v_vgv:,.2f}", f"R$ {credito_bancario:,.2f}", f"- R$ {s_pr:,.2f}", f"R$ {(v_vgv - s_pr):,.2f}", f"- R$ {invest_bolso_price:,.2f}", f"R$ {desembolso_inicial_terr:,.2f}", f"R$ {recurso_proprio_comp:,.2f}", f"R$ {total_p_price:,.2f}",
+            f"R$ {v_vgv:,.2f}", f"R$ {credito_bancario:,.2f}", f"R$ {s_pr:,.2f}", f"R$ {(v_vgv - s_pr):,.2f}", f"R$ {invest_bolso_price:,.2f}", f"R$ {desembolso_inicial_terr:,.2f}", f"R$ {recurso_proprio_comp:,.2f}", f"R$ {total_p_price:,.2f}",
             f"R$ {l_price_tijolo:,.2f}", f"{(l_price_tijolo/invest_bolso_price)*100:.2f}%", f"{((l_price_tijolo/invest_bolso_price)*100)/m_venda:.2f}%/mês",
-            f"R$ {ganho_cdi_price:,.2f}", f"{(ganho_cdi_price/invest_bolso_price)*100:.2f}%", f"{(ganho_cdi_price/invest_bolso_price*100)/m_venda:.2f}%/mês", f"R$ {l_price_total:,.2f}", f"{moic_price:.2f}x", f"{(l_price_total/invest_bolso_price*100)/m_venda:.2f}%/mês"
+            f"R$ {ganho_cdi_price:,.2f}", f"{(gan_cdi_p := (ganho_cdi_price/invest_bolso_price)*100):.2f}%", f"{gan_cdi_p/m_venda:.2f}%/mês", f"R$ {l_price_total:,.2f}", f"{moic_price:.2f}x", f"{(l_price_total/invest_bolso_price*100)/m_venda:.2f}%/mês"
         ]
     })
     st.table(df_resumo)
