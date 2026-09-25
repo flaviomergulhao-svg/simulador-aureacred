@@ -44,7 +44,7 @@ v_taoc = st.sidebar.number_input("Taxa de Estruturação (TAOC Fixa)", min_value
 tx_cdi = st.sidebar.number_input("Rendimento do Caixa Preservado (% a.m. CDI)", min_value=0.1, max_value=3.0, value=0.85, step=0.05) / 100.0
 
 # =========================================================================
-# 2. MOTOR DE ENGENHARIA FINANCEIRA RECALIBRADO (CAIXA REAL S/ DUPLICIDADE)
+# 2. MOTOR DE ENGENHARIA FINANCEIRA (CONCILIAÇÃO REAL DE CAIXA DE LAND BANKING)
 # =========================================================================
 demanda_capital_total = saldo_devedor_terreno + v_obra
 
@@ -62,9 +62,6 @@ capital_ja_pago_terreno = v_terr - saldo_devedor_terreno
 credito_alocado_terreno = credito_bancario - v_obra if credito_bancario > v_obra else 0.00
 if credito_alocado_terreno < 0:
     credito_alocado_terreno = 0.00
-
-# Desembolso imediato na largada para zerar a aquisição: o valor que ele amortiza via contrapartida
-desembolso_inicial_largada_terreno = recurso_proprio_comp if status_terreno == "Não" else 0.00
 
 s_sac = (credito_bancario / 6) + v_taoc
 s_pr = (credito_bancario / 6) + v_taoc
@@ -137,13 +134,14 @@ roi_cdi_sac_pct = (ganho_cdi_sac / invest_bolso_sac) * 100 if invest_bolso_sac >
 roi_cdi_prc_pct = (ganho_cdi_price / invest_bolso_price) * 100 if invest_bolso_price > 0 else 0.0
 
 # =========================================================================
-# 3. INTERFACE GRÁFICA CORRIGIDA (SEM BULLETS VISUAIS E COM MÁSCARA MONETÁRIA)
+# 3. INTERFACE GRÁFICA ATUALIZADA E ESTRUTURADA
 # =========================================================================
 tab1, tab2 = st.tabs(["📊 Mesa de Eficiência de Capital", "🧮 Cronograma Mês a Mês Automatizado"])
 
 with tab1:
     st.subheader("Análise Comparativa de Indicadores de Retorno (Visão Consolidada)")
     
+    # Dicionário mapeado linha por linha para garantir fechamento perfeito
     df_resumo = pd.DataFrame({
         "Estrutura de Análise de Capital": [
             "Valor de Venda (VGV)", 
@@ -218,3 +216,7 @@ with tab1:
             fmt_moeda(l_price_tijolo), 
             f"{(l_price_tijolo/invest_bolso_price)*100:.2f}%" if invest_bolso_price>0 else "0.00%", 
             f"{((l_price_tijolo/invest_bolso_price)*100)/m_venda:.2f}%/mês" if invest_bolso_price>0 else "0.00%/mês",
+            fmt_moeda(ganho_cdi_price), 
+            f"{roi_cdi_prc_pct:.2f}%", 
+            f"{roi_cdi_prc_pct/m_venda:.2f}%/mês", 
+            fmt_moeda(l_price_total), 
