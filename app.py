@@ -44,7 +44,7 @@ v_taoc = st.sidebar.number_input("Taxa de Estruturação (TAOC Fixa)", min_value
 tx_cdi = st.sidebar.number_input("Rendimento do Caixa Preservado (% a.m. CDI)", min_value=0.1, max_value=3.0, value=0.85, step=0.05) / 100.0
 
 # =========================================================================
-# 2. MOTOR DE ENGENHARIA FINANCEIRA (CONCILIAÇÃO REAL DE CAIXA DE LAND BANKING)
+# 2. MOTOR DE ENGENHARIA FINANCEIRA RECALIBRADO (CAIXA REAL S/ DUPLICIDADE)
 # =========================================================================
 demanda_capital_total = saldo_devedor_terreno + v_obra
 
@@ -55,7 +55,16 @@ else:
     recurso_proprio_comp = 0.00
     sobra_caixa_giro = credito_bancario - demanda_capital_total
 
-desembolso_inicial_terr = v_terr - saldo_devedor_terreno
+# Engenharia do Terreno: quanto o cliente já tinha aportado de fato antes (recurso empacotado na terra)
+capital_ja_pago_terreno = v_terr - saldo_devedor_terreno
+
+# Crédito bancário remanescente direcionado para abater a dívida do terreno
+credito_alocado_terreno = credito_bancario - v_obra if credito_bancario > v_obra else 0.00
+if credito_alocado_terreno < 0:
+    credito_alocado_terreno = 0.00
+
+# Desembolso imediato na largada para zerar a aquisição: o valor que ele amortiza via contrapartida
+desembolso_inicial_largada_terreno = recurso_proprio_comp if status_terreno == "Não" else 0.00
 
 s_sac = (credito_bancario / 6) + v_taoc
 s_pr = (credito_bancario / 6) + v_taoc
@@ -74,13 +83,13 @@ for i in range(m_venda + 1):
     if i == 0:
         p_sac_v, p_pr_v = 0.00, 0.00
     else:
-        # SAC Real
+        # SAC
         j_sac_m = s_sac * tx_juros
         amort_sac_m = s_sac / 240
         p_sac_v = amort_sac_m + j_sac_m
         s_sac -= amort_sac_m
 
-        # PRICE Real
+        # PRICE
         j_pr_m = s_pr * tx_juros
         fator_pmt = (tx_juros * ((1 + tx_juros)**240)) / (((1 + tx_juros)**240) - 1)
         p_pr_v = s_pr * fator_pmt
@@ -91,24 +100,27 @@ for i in range(m_venda + 1):
             total_p_sac += p_sac_v
             total_p_price += p_pr_v
             
+            # Ajuste dinâmico do Caixa Preservado no CDI (Obra teórica linear menos as parcelas pagas do bolso)
             caixa_pres_sac = (v_obra / m_venda) * i - total_p_sac + sobra_caixa_giro
             caixa_pres_prc = (v_obra / m_venda) * i - total_p_price + sobra_caixa_giro
             
             if caixa_pres_sac > 0: ganho_cdi_sac += caixa_pres_sac * tx_cdi
             if caixa_pres_prc > 0: ganho_cdi_price += caixa_pres_prc * tx_cdi
 
+        txt_ap = f"R$ {(credito_bancario / 6) if i==0 else ap_val:,.2f}"
         cronograma_data.append({
             "Período": f"Mês {i}",
-            "Aporte Obra": fmt_moeda(ap_val) if i > 0 else fmt_moeda(credito_bancario / 6),
-            "Parcela SAC": fmt_moeda(p_sac_v),
-            "Saldo SAC": fmt_moeda(s_sac),
-            "Parcela PRICE": fmt_moeda(p_pr_v),
-            "Saldo PRICE": fmt_moeda(s_pr)
+            "Aporte Obra": txt_ap,
+            "Parcela SAC": f"R$ {p_sac_v:,.2f}",
+            "Saldo SAC": f"R$ {s_sac:,.2f}",
+            "Parcela PRICE": f"R$ {p_pr_v:,.2f}",
+            "Saldo PRICE": f"R$ {s_pr:,.2f}"
         })
 
-invest_bolso_proprio = desembolso_inicial_terr + v_obra
-invest_bolso_sac = v_terr + total_p_sac + recurso_proprio_comp - sobra_caixa_giro
-invest_bolso_price = v_terr + total_p_price + recurso_proprio_comp - sobra_caixa_giro
+# CONCILIAÇÃO EXATA DO BOLSO (Elimina a duplicidade do terreno)
+invest_bolso_proprio = v_terr + v_obra
+invest_bolso_sac = capital_ja_pago_terreno + total_p_sac + recurso_proprio_comp - sobra_caixa_giro
+invest_bolso_price = capital_ja_pago_terreno + total_p_price + recurso_proprio_comp - sobra_caixa_giro
 
 l_proprio = v_vgv - invest_bolso_proprio
 l_sac_tijolo = (v_vgv - s_sac) - invest_bolso_sac
@@ -118,14 +130,14 @@ l_sac_total = l_sac_tijolo + ganho_cdi_sac
 l_price_total = l_price_tijolo + ganho_cdi_price
 
 moic_proprio = v_vgv / invest_bolso_proprio
-moic_sac = (v_vgv - s_sac + ganho_cdi_sac) / invest_bolso_sac
-moic_price = (v_vgv - s_pr + ganho_cdi_price) / invest_bolso_price
+moic_sac = (v_vgv - s_sac + ganho_cdi_sac) / invest_bolso_sac if invest_bolso_sac > 0 else 0.0
+moic_price = (v_vgv - s_pr + ganho_cdi_price) / invest_bolso_price if invest_bolso_price > 0 else 0.0
 
 roi_cdi_sac_pct = (ganho_cdi_sac / invest_bolso_sac) * 100 if invest_bolso_sac > 0 else 0.0
 roi_cdi_prc_pct = (ganho_cdi_price / invest_bolso_price) * 100 if invest_bolso_price > 0 else 0.0
 
 # =========================================================================
-# 3. INTERFACE GRÁFICA ATUALIZADA E FORMATED EM REAL BRASILEIRO
+# 3. INTERFACE GRÁFICA CORRIGIDA (SEM BULLETS VISUAIS E COM MÁSCARA MONETÁRIA)
 # =========================================================================
 tab1, tab2 = st.tabs(["📊 Mesa de Eficiência de Capital", "🧮 Cronograma Mês a Mês Automatizado"])
 
@@ -140,7 +152,7 @@ with tab1:
             "(-) Quitação da Dívida de Saída", 
             "(=) Receita Líquida pós-Quitação",
             "(-) Investimento Líquido do Bolso", 
-            "  Desembolso p/ Aquisição/Terreno (Bolso)", 
+            "  Capital de Terreno já Aportado (Passado)", 
             "  Contrapartida Inicial (Gargalo LTV)", 
             "  Desembolso de Parcelas (Caixa)",
             "(=) LUCRO OPERACIONAL DO TIJOLO", 
@@ -160,7 +172,7 @@ with tab1:
             fmt_moeda(0.0), 
             fmt_moeda(v_vgv), 
             fmt_moeda(invest_bolso_proprio), 
-            fmt_moeda(desembolso_inicial_terr), 
+            fmt_moeda(v_terr), 
             fmt_moeda(0.0), 
             fmt_moeda(v_obra),
             fmt_moeda(l_proprio), 
@@ -180,7 +192,7 @@ with tab1:
             fmt_moeda(s_sac), 
             fmt_moeda(v_vgv - s_sac), 
             fmt_moeda(invest_bolso_sac), 
-            fmt_moeda(v_terr), 
+            fmt_moeda(capital_ja_pago_terreno), 
             fmt_moeda(recurso_proprio_comp), 
             fmt_moeda(total_p_sac),
             fmt_moeda(l_sac_tijolo), 
@@ -200,23 +212,9 @@ with tab1:
             fmt_moeda(s_pr), 
             fmt_moeda(v_vgv - s_pr), 
             fmt_moeda(invest_bolso_price), 
-            fmt_moeda(v_terr), 
+            fmt_moeda(capital_ja_pago_terreno), 
             fmt_moeda(recurso_proprio_comp), 
             fmt_moeda(total_p_price),
             fmt_moeda(l_price_tijolo), 
             f"{(l_price_tijolo/invest_bolso_price)*100:.2f}%" if invest_bolso_price>0 else "0.00%", 
             f"{((l_price_tijolo/invest_bolso_price)*100)/m_venda:.2f}%/mês" if invest_bolso_price>0 else "0.00%/mês",
-            fmt_moeda(ganho_cdi_price), 
-            f"{roi_cdi_prc_pct:.2f}%", 
-            f"{roi_cdi_prc_pct/m_venda:.2f}%/mês", 
-            fmt_moeda(l_price_total), 
-            f"{moic_price:.2f}x", 
-            f"{(l_price_total/invest_bolso_price*100)/m_venda:.2f}%/mês" if invest_bolso_price>0 else "0.00%/mês"
-        ]
-    })
-    st.table(df_resumo)
-
-with tab2:
-    st.subheader("Evolução Mensal Dinâmica de Amortização e Saldos")
-    df_cronograma = pd.DataFrame(cronograma_data)
-    st.dataframe(df_cronograma, height=600, use_container_width=True)
