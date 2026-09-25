@@ -2,8 +2,8 @@ import streamlit as st
 import pandas as pd
 
 st.set_page_config(layout="wide", page_title="Áurea Cred - Simulador", page_icon="🛡️")
-st.title("🛡️ Áurea Cred - Simulador de Eficiência de Capital")
-st.caption("Modelagem Financeira Avançada de Alavancagem Concomitante Progressiva")
+st.title("🛡️ Áurea Cred - Painel de Inteligência Financeira")
+st.caption("Análise de Viabilidade Imobiliária e Eficiência de Capital Combinada")
 
 # Função auxiliar para formatação monetária brasileira rigorosa
 def fmt_moeda(valor):
@@ -55,7 +55,6 @@ else:
     recurso_proprio_comp = 0.00
     sobra_caixa_giro = credito_bancario - demanda_capital_total
 
-# Engenharia do Terreno: quanto o cliente já tinha aportado de fato antes
 capital_ja_pago_terreno = v_terr - saldo_devedor_terreno
 
 s_sac = (credito_bancario / 6) + v_taoc
@@ -75,13 +74,13 @@ for i in range(m_venda + 1):
     if i == 0:
         p_sac_v, p_pr_v = 0.00, 0.00
     else:
-        # SAC Real
+        # SAC
         j_sac_m = s_sac * tx_juros
         amort_sac_m = s_sac / 240
         p_sac_v = amort_sac_m + j_sac_m
         s_sac -= amort_sac_m
 
-        # PRICE Real
+        # PRICE
         j_pr_m = s_pr * tx_juros
         fator_pmt = (tx_juros * ((1 + tx_juros)**240)) / (((1 + tx_juros)**240) - 1)
         p_pr_v = s_pr * fator_pmt
@@ -92,7 +91,6 @@ for i in range(m_venda + 1):
             total_p_sac += p_sac_v
             total_p_price += p_pr_v
             
-            # Caixa preservado livre no banco rendendo CDI
             caixa_pres_sac = (v_obra / m_venda) * i - total_p_sac + sobra_caixa_giro
             caixa_pres_prc = (v_obra / m_venda) * i - total_p_price + sobra_caixa_giro
             
@@ -128,14 +126,46 @@ roi_cdi_sac_pct = (ganho_cdi_sac / invest_bolso_sac) * 100 if invest_bolso_sac >
 roi_cdi_prc_pct = (ganho_cdi_price / invest_bolso_price) * 100 if invest_bolso_price > 0 else 0.0
 
 # =========================================================================
-# 3. INTERFACE GRÁFICA LINEARIZADA POR COLUNAS SEPARADAS (IMUNE A SINTAXE)
+# 3. INTERFACE PROPOSTA 1: CARDS DE DESTAQUE SUPERIORES
 # =========================================================================
 tab1, tab2 = st.tabs(["📊 Mesa de Eficiência de Capital", "🧮 Cronograma Mês a Mês Automatizado"])
 
 with tab1:
-    st.subheader("Análise Comparativa de Indicadores de Retorno (Visão Consolidada)")
+    st.subheader("Métricas de Alavancagem e Múltiplos de Bolso")
     
-    # 1. Lista de descrições da primeira coluna
+    # Desenho dos 3 Cards de Impacto no topo da folha
+    c1, c2, c3 = st.columns(3)
+    with c1:
+        st.metric(
+            label="Cenário A: Próprio (À Vista)", 
+            value=f"{moic_proprio:.2f}x de MOIC", 
+            delta=f"Lucro: {fmt_moeda(l_proprio)}", 
+            delta_color="off"
+        )
+        st.caption(f"Rendimento Combinado: {((l_proprio/invest_bolso_proprio)*100)/m_venda:.2f}% /mês")
+        
+    with c2:
+        st.metric(
+            label="Cenário B: Alavancagem SAC", 
+            value=f"{moic_sac:.2f}x de MOIC", 
+            delta=f"Lucro: {fmt_moeda(l_sac_total)}", 
+            delta_color="normal"
+        )
+        st.caption(f"Rendimento Combinado: {(l_sac_total/invest_bolso_sac*100)/m_venda:.2f}% /mês")
+        
+    with c3:
+        st.metric(
+            label="Cenário C: Alavancagem PRICE", 
+            value=f"{moic_price:.2f}x de MOIC", 
+            delta=f"Lucro: {fmt_moeda(l_price_total)}", 
+            delta_color="normal"
+        )
+        st.caption(f"Rendimento Combinado: {(l_price_total/invest_bolso_price*100)/m_venda:.2f}% /mês")
+
+    st.markdown("---")
+    st.subheader("Detalhamento Contábil do Fluxo de Caixa")
+    
+    # Tabelas lineares limpas organizadas por vetores simples
     rows_desc = [
         "Valor de Venda (VGV)", "(-) Crédito Estruturado Selecionado", "(-) Capital de Giro Injetado no Caixa", 
         "(-) Quitação da Dívida de Saída", "(=) Receita Líquida pós-Quitação", "(-) Investimento Líquido do Bolso", 
@@ -145,7 +175,6 @@ with tab1:
         "(=) BENEFÍCIO FINANCEIRO COMBINADO", "Múltiplo de Capital Combinado (MOIC)", "🔥 Rendimento Mensal Combinado Total"
     ]
     
-    # 2. Lista de valores do Cenário Próprio
     rows_proprio = [
         fmt_moeda(v_vgv), fmt_moeda(0.0), fmt_moeda(0.0), fmt_moeda(0.0), fmt_moeda(v_vgv), fmt_moeda(invest_bolso_proprio),
         fmt_moeda(v_terr), fmt_moeda(0.0), fmt_moeda(v_obra), fmt_moeda(l_proprio), f"{(l_proprio/invest_bolso_proprio)*100:.2f}%",
@@ -153,7 +182,6 @@ with tab1:
         f"{moic_proprio:.2f}x", f"{((l_proprio/invest_bolso_proprio)*100)/m_venda:.2f}%/mês"
     ]
     
-    # 3. Lista de valores do Cenário SAC
     rows_sac = [
         fmt_moeda(v_vgv), fmt_moeda(credito_bancario), fmt_moeda(sobra_caixa_giro), fmt_moeda(s_sac), fmt_moeda(v_vgv - s_sac), fmt_moeda(invest_bolso_sac),
         fmt_moeda(capital_ja_pago_terreno), fmt_moeda(recurso_proprio_comp), fmt_moeda(total_p_sac), fmt_moeda(l_sac_tijolo),
@@ -162,7 +190,6 @@ with tab1:
         f"{(l_sac_total/invest_bolso_sac*100)/m_venda:.2f}%/mês" if invest_bolso_sac>0 else "0.00%/mês"
     ]
     
-    # 4. Lista de valores do Cenário PRICE
     rows_price = [
         fmt_moeda(v_vgv), fmt_moeda(credito_bancario), fmt_moeda(sobra_caixa_giro), fmt_moeda(s_pr), fmt_moeda(v_vgv - s_pr), fmt_moeda(invest_bolso_price),
         fmt_moeda(capital_ja_pago_terreno), fmt_moeda(recurso_proprio_comp), fmt_moeda(total_p_price), fmt_moeda(l_price_tijolo),
@@ -171,16 +198,3 @@ with tab1:
         f"{(l_price_total/invest_bolso_price*100)/m_venda:.2f}%/mês" if invest_bolso_price>0 else "0.00%/mês"
     ]
     
-    # Montagem do DataFrame final concatenando as listas (Garantia de erro zero)
-    df_resumo = pd.DataFrame({
-        "Estrutura de Análise de Capital": rows_desc,
-        "Cenário A: Próprio": rows_proprio,
-        "Cenário B: SAC": rows_sac,
-        "Cenário C: PRICE": rows_price
-    })
-    st.table(df_resumo)
-
-with tab2:
-    st.subheader("Evolução Mensal Dinâmica de Amortização e Saldos")
-    df_cronograma = pd.DataFrame(cronograma_data)
-    st.dataframe(df_cronograma, height=600, use_container_width=True)
