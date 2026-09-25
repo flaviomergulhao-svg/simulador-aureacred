@@ -43,10 +43,8 @@ credito_alocado_terreno = credito_bancario - v_obra if credito_bancario > v_obra
 if credito_alocado_terreno < 0:
     credito_alocado_terreno = 0.00
 
-# CORREÇÃO CRÍTICA DO BOLSO: O que sai do bolso para o terreno é o valor total dele menos o que o banco pagou
+# O que sai do bolso para o terreno é o valor total dele menos o que o banco pagou
 desembolso_real_terreno_alavancado = v_terr - credito_alocado_terreno
-
-# No cenário à vista, ele gasta o valor de avaliação cheio (seja por compra ou por quitação do bolso)
 desembolso_real_terreno_proprio = v_terr
 
 s_sac = (credito_bancario / 6) + v_taoc
@@ -83,11 +81,9 @@ for i in range(m_venda + 1):
             total_p_sac += p_sac_v
             total_p_price += p_pr_v
             
-            # Caixa livre no banco rendendo CDI: O que ele preservou deixando de gastar à vista
             caixa_pres_sac = (v_obra / m_venda) * i - total_p_sac
             caixa_pres_prc = (v_obra / m_venda) * i - total_p_price
             
-            # Se ele amortizou parte do terreno com recurso próprio, esse caixa não está preservado
             if status_terreno == "Não":
                 caixa_pres_sac += credito_alocado_terreno
                 caixa_pres_prc += credito_alocado_terreno
@@ -121,6 +117,10 @@ moic_proprio = v_vgv / invest_bolso_proprio
 moic_sac = (v_vgv - s_sac + ganho_cdi_sac) / invest_bolso_sac
 moic_price = (v_vgv - s_pr + ganho_cdi_price) / invest_bolso_price
 
+# Isolando as variáveis de percentual para evitar erros de compilação rápida
+roi_cdi_sac_pct = (ganho_cdi_sac / invest_bolso_sac) * 100
+roi_cdi_prc_pct = (ganho_cdi_price / invest_bolso_price) * 100
+
 # =========================================================================
 # 3. INTERFACE GRÁFICA ATUALIZADA E CORRIGIDA
 # =========================================================================
@@ -145,12 +145,12 @@ with tab1:
         "Cenário B: SAC": [
             f"R$ {v_vgv:,.2f}", f"R$ {credito_bancario:,.2f}", f"R$ {s_sac:,.2f}", f"R$ {(v_vgv - s_sac):,.2f}", f"R$ {invest_bolso_sac:,.2f}", f"R$ {desembolso_real_terreno_alavancado:,.2f}", f"R$ {recurso_proprio_comp:,.2f}", f"R$ {total_p_sac:,.2f}",
             f"R$ {l_sac_tijolo:,.2f}", f"{(l_sac_tijolo/invest_bolso_sac)*100:.2f}%", f"{((l_sac_tijolo/invest_bolso_sac)*100)/m_venda:.2f}%/mês",
-            f"R$ {ganho_cdi_sac:,.2f}", f"{(gan_cdi := (ganho_cdi_sac/invest_bolso_sac)*100):.2f}%", f"{gan_cdi/m_venda:.2f}%/mês", f"R$ {l_sac_total:,.2f}", f"{moic_sac:.2f}x", f"{(l_sac_total/invest_bolso_sac*100)/m_venda:.2f}%/mês"
+            f"R$ {ganho_cdi_sac:,.2f}", f"{roi_cdi_sac_pct:.2f}%", f"{roi_cdi_sac_pct/m_venda:.2f}%/mês", f"R$ {l_sac_total:,.2f}", f"{moic_sac:.2f}x", f"{(l_sac_total/invest_bolso_sac*100)/m_venda:.2f}%/mês"
         ],
         "Cenário C: PRICE": [
             f"R$ {v_vgv:,.2f}", f"R$ {credito_bancario:,.2f}", f"R$ {s_pr:,.2f}", f"R$ {(v_vgv - s_pr):,.2f}", f"R$ {invest_bolso_price:,.2f}", f"R$ {desembolso_real_terreno_alavancado:,.2f}", f"R$ {recurso_proprio_comp:,.2f}", f"R$ {total_p_price:,.2f}",
             f"R$ {l_price_tijolo:,.2f}", f"{(l_price_tijolo/invest_bolso_price)*100:.2f}%", f"{((l_price_tijolo/invest_bolso_price)*100)/m_venda:.2f}%/mês",
-            f"R$ {ganho_cdi_price:,.2f}", f"{(ganho_cdi_p := (ganho_cdi_price/invest_bolso_price)*100):.2f}%", f"{gan_cdi_p/m_venda:.2f}%/mês", f"R$ {l_price_total:,.2f}", f"{moic_price:.2f}x", f"{(l_price_total/invest_bolso_price*100)/m_venda:.2f}%/mês"
+            f"R$ {ganho_cdi_price:,.2f}", f"{roi_cdi_prc_pct:.2f}%", f"{roi_cdi_prc_pct/m_venda:.2f}%/mês", f"R$ {l_price_total:,.2f}", f"{moic_price:.2f}x", f"{(l_price_total/invest_bolso_price*100)/m_venda:.2f}%/mês"
         ]
     })
     st.table(df_resumo)
