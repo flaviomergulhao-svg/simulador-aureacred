@@ -5,8 +5,14 @@ st.set_page_config(layout="wide", page_title="Áurea Cred - Simulador", page_ico
 st.title("🛡️ Áurea Cred - Simulador de Eficiência de Capital")
 st.caption("Modelagem Financeira Avançada de Alavancagem Concomitante Progressiva")
 
+# Função auxiliar para formatação monetária brasileira rigorosa
+def fmt_moeda(valor):
+    if valor < 0:
+        return f"- R$ {abs(valor):,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+    return f"R$ {valor:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+
 # =========================================================================
-# 1. PAINEL DE CONTROLE LATERAL (INPUTS DE CRÉDITO DINÂMICO)
+# 1. PAINEL DE CONTROLE LATERAL (INPUTS)
 # =========================================================================
 st.sidebar.header("⚙️ Premissas Operacionais")
 v_vgv = st.sidebar.number_input("Valor Geral de Vendas (VGV)", min_value=100000.0, value=3600000.0, step=100000.0, format="%.2f")
@@ -38,7 +44,7 @@ v_taoc = st.sidebar.number_input("Taxa de Estruturação (TAOC Fixa)", min_value
 tx_cdi = st.sidebar.number_input("Rendimento do Caixa Preservado (% a.m. CDI)", min_value=0.1, max_value=3.0, value=0.85, step=0.05) / 100.0
 
 # =========================================================================
-# 2. MOTOR DE ENGENHARIA FINANCEIRA (CONCILIAÇÃO COM SOBRA DE CAIXA)
+# 2. MOTOR DE ENGENHARIA FINANCEIRA (CONCILIAÇÃO REAL DE CAIXA DE LAND BANKING)
 # =========================================================================
 demanda_capital_total = saldo_devedor_terreno + v_obra
 
@@ -68,13 +74,13 @@ for i in range(m_venda + 1):
     if i == 0:
         p_sac_v, p_pr_v = 0.00, 0.00
     else:
-        # SAC
+        # SAC Real
         j_sac_m = s_sac * tx_juros
         amort_sac_m = s_sac / 240
         p_sac_v = amort_sac_m + j_sac_m
         s_sac -= amort_sac_m
 
-        # PRICE
+        # PRICE Real
         j_pr_m = s_pr * tx_juros
         fator_pmt = (tx_juros * ((1 + tx_juros)**240)) / (((1 + tx_juros)**240) - 1)
         p_pr_v = s_pr * fator_pmt
@@ -91,14 +97,13 @@ for i in range(m_venda + 1):
             if caixa_pres_sac > 0: ganho_cdi_sac += caixa_pres_sac * tx_cdi
             if caixa_pres_prc > 0: ganho_cdi_price += caixa_pres_prc * tx_cdi
 
-        txt_ap = f"R$ {(credito_bancario / 6) if i==0 else ap_val:,.2f}"
         cronograma_data.append({
             "Período": f"Mês {i}",
-            "Aporte Obra": txt_ap,
-            "Parcela SAC": f"R$ {p_sac_v:,.2f}",
-            "Saldo SAC": f"R$ {s_sac:,.2f}",
-            "Parcela PRICE": f"R$ {p_pr_v:,.2f}",
-            "Saldo PRICE": f"R$ {s_pr:,.2f}"
+            "Aporte Obra": fmt_moeda(ap_val) if i > 0 else fmt_moeda(credito_bancario / 6),
+            "Parcela SAC": fmt_moeda(p_sac_v),
+            "Saldo SAC": fmt_moeda(s_sac),
+            "Parcela PRICE": fmt_moeda(p_pr_v),
+            "Saldo PRICE": fmt_moeda(s_pr)
         })
 
 invest_bolso_proprio = desembolso_inicial_terr + v_obra
@@ -120,14 +125,13 @@ roi_cdi_sac_pct = (ganho_cdi_sac / invest_bolso_sac) * 100 if invest_bolso_sac >
 roi_cdi_prc_pct = (ganho_cdi_price / invest_bolso_price) * 100 if invest_bolso_price > 0 else 0.0
 
 # =========================================================================
-# 3. INTERFACE GRÁFICA ATUALIZADA E TOTALMENTE ALINHADA (MESMO TAMANHO)
+# 3. INTERFACE GRÁFICA ATUALIZADA E FORMATED EM REAL BRASILEIRO
 # =========================================================================
 tab1, tab2 = st.tabs(["📊 Mesa de Eficiência de Capital", "🧮 Cronograma Mês a Mês Automatizado"])
 
 with tab1:
     st.subheader("Análise Comparativa de Indicadores de Retorno (Visão Consolidada)")
     
-    # IMPORTANTE: Todas as colunas agora contêm exatamente 17 linhas balanceadas
     df_resumo = pd.DataFrame({
         "Estrutura de Análise de Capital": [
             "Valor de Venda (VGV)", 
@@ -136,76 +140,76 @@ with tab1:
             "(-) Quitação da Dívida de Saída", 
             "(=) Receita Líquida pós-Quitação",
             "(-) Investimento Líquido do Bolso", 
-            "  - Desembolso p/ Aquisição/Terreno (Bolso)", 
-            "  - Contrapartida Inicial (Gargalo LTV)", 
-            "  - Desembolso de Parcelas (Caixa)",
+            "  Desembolso p/ Aquisição/Terreno (Bolso)", 
+            "  Contrapartida Inicial (Gargalo LTV)", 
+            "  Desembolso de Parcelas (Caixa)",
             "(=) LUCRO OPERACIONAL DO TIJOLO", 
-            "  - ROI Operacional do Empreendimento", 
-            "  - Rendimento Mensal do Empreendimento",
+            "  ROI Operacional do Empreendimento", 
+            "  Rendimento Mensal do Empreendimento",
             "(+) RENDIMENTO DO CAPITAL PRESERVADO (CDI)", 
-            "  - ROI Adicional Gerado pelo CDI", 
-            "  - Rendimento Mensal Adicional (CDI)",
+            "  ROI Adicional Gerado pelo CDI", 
+            "  Rendimento Mensal Adicional (CDI)",
             "(=) BENEFÍCIO FINANCEIRO COMBINADO", 
             "Múltiplo de Capital Combinado (MOIC)", 
             "🔥 Rendimento Mensal Combinado Total"
         ],
         "Cenário A: Próprio": [
-            f"R$ {v_vgv:,.2f}", 
-            "R$ 0.00", 
-            "R$ 0.00", 
-            "R$ 0.00", 
-            f"R$ {v_vgv:,.2f}", 
-            f"- R$ {invest_bolso_proprio:,.2f}", 
-            f"R$ {desembolso_inicial_terr:,.2f}", 
-            "R$ 0.00", 
-            f"R$ {v_obra:,.2f}",
-            f"R$ {l_proprio:,.2f}", 
+            fmt_moeda(v_vgv), 
+            fmt_moeda(0.0), 
+            fmt_moeda(0.0), 
+            fmt_moeda(0.0), 
+            fmt_moeda(v_vgv), 
+            fmt_moeda(invest_bolso_proprio), 
+            fmt_moeda(desembolso_inicial_terr), 
+            fmt_moeda(0.0), 
+            fmt_moeda(v_obra),
+            fmt_moeda(l_proprio), 
             f"{(l_proprio/invest_bolso_proprio)*100:.2f}%", 
             f"{((l_proprio/invest_bolso_proprio)*100)/m_venda:.2f}%/mês",
-            "R$ 0.00", 
+            fmt_moeda(0.0), 
             "0.00%", 
             "0.00%/mês", 
-            f"R$ {l_proprio:,.2f}", 
+            fmt_moeda(l_proprio), 
             f"{moic_proprio:.2f}x", 
             f"{((l_proprio/invest_bolso_proprio)*100)/m_venda:.2f}%/mês"
         ],
         "Cenário B: SAC": [
-            f"R$ {v_vgv:,.2f}", 
-            f"R$ {credito_bancario:,.2f}", 
-            f"R$ {sobra_caixa_giro:,.2f}", 
-            f"- R$ {s_sac:,.2f}", 
-            f"R$ {(v_vgv - s_sac):,.2f}", 
-            f"- R$ {invest_bolso_sac:,.2f}", 
-            f"R$ {v_terr:,.2f}", 
-            f"R$ {recurso_proprio_comp:,.2f}", 
-            f"R$ {total_p_sac:,.2f}",
-            f"R$ {l_sac_tijolo:,.2f}", 
+            fmt_moeda(v_vgv), 
+            fmt_moeda(credito_bancario), 
+            fmt_moeda(sobra_caixa_giro), 
+            fmt_moeda(s_sac), 
+            fmt_moeda(v_vgv - s_sac), 
+            fmt_moeda(invest_bolso_sac), 
+            fmt_moeda(v_terr), 
+            fmt_moeda(recurso_proprio_comp), 
+            fmt_moeda(total_p_sac),
+            fmt_moeda(l_sac_tijolo), 
             f"{(l_sac_tijolo/invest_bolso_sac)*100:.2f}%" if invest_bolso_sac>0 else "0.00%", 
             f"{((l_sac_tijolo/invest_bolso_sac)*100)/m_venda:.2f}%/mês" if invest_bolso_sac>0 else "0.00%/mês",
-            f"R$ {ganho_cdi_sac:,.2f}", 
+            fmt_moeda(ganho_cdi_sac), 
             f"{roi_cdi_sac_pct:.2f}%", 
             f"{roi_cdi_sac_pct/m_venda:.2f}%/mês", 
-            f"R$ {l_sac_total:,.2f}", 
+            fmt_moeda(l_sac_total), 
             f"{moic_sac:.2f}x", 
             f"{(l_sac_total/invest_bolso_sac*100)/m_venda:.2f}%/mês" if invest_bolso_sac>0 else "0.00%/mês"
         ],
         "Cenário C: PRICE": [
-            f"R$ {v_vgv:,.2f}", 
-            f"R$ {credito_bancario:,.2f}", 
-            f"R$ {sobra_caixa_giro:,.2f}", 
-            f"- R$ {s_pr:,.2f}", 
-            f"R$ {(v_vgv - s_pr):,.2f}", 
-            f"- R$ {invest_bolso_price:,.2f}", 
-            f"R$ {v_terr:,.2f}", 
-            f"R$ {recurso_proprio_comp:,.2f}", 
-            f"R$ {total_p_price:,.2f}",
-            f"R$ {l_price_tijolo:,.2f}", 
+            fmt_moeda(v_vgv), 
+            fmt_moeda(credito_bancario), 
+            fmt_moeda(sobra_caixa_giro), 
+            fmt_moeda(s_pr), 
+            fmt_moeda(v_vgv - s_pr), 
+            fmt_moeda(invest_bolso_price), 
+            fmt_moeda(v_terr), 
+            fmt_moeda(recurso_proprio_comp), 
+            fmt_moeda(total_p_price),
+            fmt_moeda(l_price_tijolo), 
             f"{(l_price_tijolo/invest_bolso_price)*100:.2f}%" if invest_bolso_price>0 else "0.00%", 
             f"{((l_price_tijolo/invest_bolso_price)*100)/m_venda:.2f}%/mês" if invest_bolso_price>0 else "0.00%/mês",
-            f"R$ {ganho_cdi_price:,.2f}", 
+            fmt_moeda(ganho_cdi_price), 
             f"{roi_cdi_prc_pct:.2f}%", 
             f"{roi_cdi_prc_pct/m_venda:.2f}%/mês", 
-            f"R$ {l_price_total:,.2f}", 
+            fmt_moeda(l_price_total), 
             f"{moic_price:.2f}x", 
             f"{(l_price_total/invest_bolso_price*100)/m_venda:.2f}%/mês" if invest_bolso_price>0 else "0.00%/mês"
         ]
