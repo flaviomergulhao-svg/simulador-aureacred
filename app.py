@@ -126,71 +126,63 @@ roi_cdi_sac_pct = (ganho_cdi_sac / invest_bolso_sac) * 100 if invest_bolso_sac >
 roi_cdi_prc_pct = (ganho_cdi_price / invest_bolso_price) * 100 if invest_bolso_price > 0 else 0.0
 
 # =========================================================================
-# 3. INTERFACE DE ABAS (RESUMO X CRONOGRAMA)
+# 3. INTERFACE DE ABAS COM EXPANSORES AUTOMATIZADOS (IMUNE A CORTES)
 # =========================================================================
 tab1, tab2 = st.tabs(["📊 Mesa de Viabilidade", "🧮 Cronograma Mês a Mês Automatizado"])
+
+# Lista padrão de rótulos do sumário vertical
+labels = [
+    "Valor Geral de Vendas (VGV)", "(-) Crédito Estruturado Selecionado", 
+    "(-) Capital de Giro Injetado", "(-) Quitação da Dívida de Saída", 
+    "(=) Receita Líquida pós-Quitação", "(-) Investimento Líquido do Bolso", 
+    "  • Capital de Terreno já Aportado", "  • Contrapartida Inicial (Gargalo LTV)", 
+    "  • Desembolso de Parcelas (Caixa)", "(=) LUCRO OPERACIONAL DO TIJOLO", 
+    "  • ROI Operacional do Empreendimento", "  • Rendimento Mensal do Empreendimento",
+    "(+) RENDIMENTO DO CAPITAL PRESERVADO (CDI)", "  • ROI Adicional Gerado pelo CDI", 
+    "  • Rendimento Mensal Adicional (CDI)", "(=) BENEFÍCIO FINANCEIRO COMBINADO", 
+    "Múltiplo de Capital Combinado (MOIC)", "🔥 Rendimento Mensal Combinado Total"
+]
 
 with tab1:
     st.subheader("Simulação de Cenários de Capital")
     
-    # --------------------------------=====================================
-    # EXPANDSER 1: CENÁRIO A
-    # --------------------------------=====================================
+    # ---------------------------------------------------------------------
+    # EXPANSER 1: CENÁRIO A (PRÓPRIO)
+    # ---------------------------------------------------------------------
     with st.expander("▶️ Cenário A: Execução Pura com Recursos Próprios (Sem Alavancagem)"):
-        df_pr = pd.DataFrame({
-            "Métrica Financeira": [
-                "Valor Geral de Vendas (VGV)", "(-) Investimento Total do Bolso", 
-                "  - Desembolso p/ Aquisição do Terreno", "  - Desembolso de Obra à Vista", 
-                "(=) LUCRO OPERACIONAL DO TIJOLO", "  - ROI Real sobre o Dinheiro do Bolso", 
-                "  - Rendimento Mensal Equivalente s/ Bolso", "(+) Rendimento de Caixa em CDI (Blindado)",
-                "Múltiplo de Capital Real (MOIC Total)"
-            ],
-            "Valor do Cenário": [
-                fmt_moeda(v_vgv), fmt_moeda(invest_bolso_proprio),
-                fmt_moeda(v_terr), fmt_moeda(v_obra),
-                fmt_moeda(l_proprio), f"{(l_proprio/invest_bolso_proprio)*100:.2f}%",
-                f"{((l_proprio/invest_bolso_proprio)*100)/m_venda:.2f}%/mês", fmt_moeda(0.0),
-                f"{moic_proprio:.2f}x"
-            ]
-        })
-        st.table(df_pr)
+        val_pr = [
+            fmt_moeda(v_vgv), fmt_moeda(0.0), fmt_moeda(0.0), fmt_moeda(0.0), fmt_moeda(v_vgv), fmt_moeda(invest_bolso_proprio),
+            fmt_moeda(v_terr), fmt_moeda(0.0), fmt_moeda(v_obra), fmt_moeda(l_proprio), f"{(l_proprio/invest_bolso_proprio)*100:.2f}%",
+            f"{((l_proprio/invest_bolso_proprio)*100)/m_venda:.2f}%/mês", fmt_moeda(0.0), "0.00%", "0.00%/mês", fmt_moeda(l_proprio),
+            f"{moic_proprio:.2f}x", f"{((l_proprio/invest_bolso_proprio)*100)/m_venda:.2f}%/mês"
+        ]
+        st.table(pd.DataFrame({"Diretriz de Análise": labels, "Resultado": val_pr}))
 
-    # --------------------------------=====================================
-    # EXPANDSER 2: CENÁRIO B
-    # --------------------------------=====================================
+    # ---------------------------------------------------------------------
+    # EXPANSER 2: CENÁRIO B (SAC)
+    # ---------------------------------------------------------------------
     with st.expander("▶️ Cenário B: Alavancagem Inteligente via Sistema SAC Concomitante"):
-        df_sc = pd.DataFrame({
-            "Métrica Financeira": [
-                "Valor Geral de Vendas (VGV)", "(-) Crédito Estruturado SAC Tomado", 
-                "(-) Quitação do Saldo Devedor de Saída", "(=) Receita Líquida pós-Venda",
-                "(-) Investimento Efetivo do Bolso (Fluxo)", "  - Terreno já Imobilizado (Passado)", 
-                "  - Contrapartida de Largada (Gargalo LTV)", "  - Total de Parcelas SAC Pagas na Obra",
-                "(=) LUCRO OPERACIONAL DO TIJOLO", "  - ROI Puro do Empreendimento s/ o Bolso", "  - Rendimento Mensal do Empreendimento",
-                "(+) RENDIMENTO DO CAPITAL PRESERVADO (CDI)", "  - ROI Adicional Gerado pelo Caixa no Banco",
-                "(=) BENEFÍCIO FINANCEIRO COMBINADO NO BOLSO", "🚀 Múltiplo de Capital Combinado (MOIC Total)",
-                "🔥 Rendimento Mensal Combinado Total"
-            ],
-            "Valor do Cenário": [
-                fmt_moeda(v_vgv), fmt_moeda(credito_bancario),
-                fmt_moeda(s_sac), fmt_moeda(v_vgv - s_sac),
-                fmt_moeda(invest_bolso_sac), fmt_moeda(capital_ja_pago_terreno),
-                fmt_moeda(recurso_proprio_comp), fmt_moeda(total_p_sac),
-                fmt_moeda(l_sac_tijolo), f"{(l_sac_tijolo/invest_bolso_sac)*100:.2f}%" if invest_bolso_sac>0 else "0.00%", f"{((l_sac_tijolo/invest_bolso_sac)*100)/m_venda:.2f}%/mês" if invest_bolso_sac>0 else "0.00%/mês",
-                fmt_moeda(ganho_cdi_sac), f"{roi_cdi_sac_pct:.2f}%",
-                fmt_moeda(l_sac_total), f"{moic_sac:.2f}x",
-                f"{(l_sac_total/invest_bolso_sac*100)/m_venda:.2f}%/mês" if invest_bolso_sac>0 else "0.00%/mês"
-            ]
-        })
-        st.table(df_sc)
+        val_sc = [
+            fmt_moeda(v_vgv), fmt_moeda(credito_bancario), fmt_moeda(sobra_caixa_giro), fmt_moeda(s_sac), fmt_moeda(v_vgv - s_sac), fmt_moeda(invest_bolso_sac),
+            fmt_moeda(capital_ja_pago_terreno), fmt_moeda(recurso_proprio_comp), fmt_moeda(total_p_sac), fmt_moeda(l_sac_tijolo),
+            f"{(l_sac_tijolo/invest_bolso_sac)*100:.2f}%" if invest_bolso_sac>0 else "0.00%", f"{((l_sac_tijolo/invest_bolso_sac)*100)/m_venda:.2f}%/mês" if invest_bolso_sac>0 else "0.00%/mês",
+            fmt_moeda(ganho_cdi_sac), f"{roi_cdi_sac_pct:.2f}%", f"{roi_cdi_sac_pct/m_venda:.2f}%/mês", fmt_moeda(l_sac_total), f"{moic_sac:.2f}x",
+            f"{(l_sac_total/invest_bolso_sac*100)/m_venda:.2f}%/mês" if invest_bolso_sac>0 else "0.00%/mês"
+        ]
+        st.table(pd.DataFrame({"Diretriz de Análise": labels, "Resultado": val_sc}))
 
-    # --------------------------------=====================================
-    # EXPANDSER 3: CENÁRIO C
-    # --------------------------------=====================================
+    # ---------------------------------------------------------------------
+    # EXPANSER 3: CENÁRIO C (PRICE)
+    # ---------------------------------------------------------------------
     with st.expander("▶️ Cenário C: Alavancagem Corporativa Avançada via Sistema PRICE"):
-        df_pc = pd.DataFrame({
-            "Métrica Financeira": [
-                "Valor Geral de Vendas (VGV)", "(-) Crédito Estruturado PRICE Tomado", 
-                "(-) Quitação do Saldo Devedor de Saída", "(=) Receita Líquida pós-Venda",
-                "(-) Investimento Efetivo do Bolso (Fluxo)", "  - Terreno já Imobilizado (Passado)", 
-                "  - Contrapartida de Largada (Gargalo LTV)", "  - Total de Parcelas PRICE Pagas na Obra",
-                "(=) LUCRO OPERACIONAL DO TIJOLO", "  - ROI Puro do Empreendimento s/ o Bolso", "  - Rendimento Mensal do Empreendimento",
+        val_pc = [
+            fmt_moeda(v_vgv), fmt_moeda(credito_bancario), fmt_moeda(sobra_caixa_giro), fmt_moeda(s_pr), fmt_moeda(v_vgv - s_pr), fmt_moeda(invest_bolso_price),
+            fmt_moeda(capital_ja_pago_terreno), fmt_moeda(recurso_proprio_comp), fmt_moeda(total_p_price), fmt_moeda(l_price_tijolo),
+            f"{(l_price_tijolo/invest_bolso_price)*100:.2f}%" if invest_bolso_price>0 else "0.00%", f"{((l_price_tijolo/invest_bolso_price)*100)/m_venda:.2f}%/mês" if invest_bolso_price>0 else "0.00%/mês",
+            fmt_moeda(ganho_cdi_price), f"{roi_cdi_prc_pct:.2f}%", f"{roi_cdi_prc_pct/m_venda:.2f}%/mês", fmt_moeda(l_price_total), f"{moic_price:.2f}x",
+            f"{(l_price_total/invest_bolso_price*100)/m_venda:.2f}%/mês" if invest_bolso_price>0 else "0.00%/mês"
+        ]
+        st.table(pd.DataFrame({"Diretriz de Análise": labels, "Resultado": val_pc}))
+
+with tab2:
+    st.subheader("Evolução Mensal Dinâmica de Amortização e Saldos")
