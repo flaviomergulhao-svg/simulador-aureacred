@@ -12,7 +12,7 @@ def fmt_moeda(valor):
     return f"R$ {valor:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
 
 # =========================================================================
-# 1. PAINEL DE CONTROLE LATERAL (INPUTS)
+# 1. PAINEL DE CONTROLE LATERAL (INPUTS CORRIGIDOS COM INTEIROS)
 # =========================================================================
 st.sidebar.header("⚙️ Premissas Operacionais")
 v_vgv = st.sidebar.number_input("Valor Geral de Vendas (VGV)", min_value=100000.0, value=3600000.0, step=100000.0, format="%.2f")
@@ -25,15 +25,17 @@ if status_terreno == "Não":
 else:
     saldo_devedor_terreno = 0.00
 
-# Slider dinâmico amarrado ao limite estrito de 50% do VGV
-teto_maximo_ltv = v_vgv * 0.50
+# CORREÇÃO DO SLIDER: Passando os limites como inteiros para eliminar o erro de arredondamento do passo
+teto_maximo_ltv = int(v_vgv * 0.50)
+minimo_slider = int(v_obra / 2)
+
 credito_bancario = st.sidebar.slider(
     "Valor do Crédito Desejado (Limite 50% VGV)", 
-    min_value=float(v_obra / 2), 
-    max_value=float(teto_maximo_ltv), 
-    value=float(teto_maximo_ltv), 
-    step=10000.0,
-    format="R$ %.2f"
+    min_value=minimo_slider, 
+    max_value=teto_maximo_ltv, 
+    value=teto_maximo_ltv, 
+    step=10000,
+    format="R$ %d"
 )
 
 m_venda = st.sidebar.slider("Prazo Estimado de Venda (Meses)", min_value=6, max_value=36, value=18, step=1)
@@ -125,7 +127,7 @@ roi_cdi_sac_pct = (ganho_cdi_sac / invest_bolso_sac) * 100 if invest_bolso_sac >
 roi_cdi_prc_pct = (ganho_cdi_price / invest_bolso_price) * 100 if invest_bolso_price > 0 else 0.0
 
 # =========================================================================
-# 3. INTERFACE GRÁFICA ATUALIZADA
+# 3. INTERFACE DE ABAS COM EXPANSORES AUTOMATIZADOS (IMUNE A CORTES)
 # =========================================================================
 tab1, tab2 = st.tabs(["📊 Mesa de Viabilidade", "🧮 Cronograma Mês a Mês Automatizado"])
 
@@ -133,11 +135,11 @@ labels = [
     "Valor Geral de Vendas (VGV)", "(-) Crédito Estruturado Selecionado", 
     "(-) Capital de Giro Injetado no Caixa", "(-) Quitação da Dívida de Saída", 
     "(=) Receita Líquida pós-Quitação", "(-) Investimento Líquido do Bolso", 
-    "  • Capital de Terreno já Aportado", "  • Contrapartida Inicial (Gargalo LTV)", 
-    "  • Desembolso de Parcelas (Caixa)", "(=) LUCRO OPERACIONAL DO TIJOLO", 
-    "  • ROI Operacional do Empreendimento", "  • Rendimento Mensal do Empreendimento",
-    "(+) RENDIMENTO DO CAPITAL PRESERVADO (CDI)", "  • ROI Adicional Gerado pelo CDI", 
-    "  • Rendimento Mensal Adicional (CDI)", "(=) BENEFÍCIO FINANCEIRO COMBINADO", 
+    "  Capital de Terreno já Aportado", "  Contrapartida Inicial (Gargalo LTV)", 
+    "  Desembolso de Parcelas (Caixa)", "(=) LUCRO OPERACIONAL DO TIJOLO", 
+    "  ROI Operacional do Empreendimento", "  Rendimento Mensal do Empreendimento",
+    "(+) RENDIMENTO DO CAPITAL PRESERVADO (CDI)", "  ROI Adicional Gerado pelo CDI", 
+    "  Rendimento Mensal Adicional (CDI)", "(=) BENEFÍCIO FINANCEIRO COMBINADO", 
     "Múltiplo de Capital Combinado (MOIC)", "🔥 Rendimento Mensal Combinado Total"
 ]
 
@@ -176,12 +178,11 @@ with tab1:
 with tab2:
     st.subheader("Evolução Mensal Dinâmica de Amortização e Saldos")
     
-    # ADIÇÃO SOLICITADA: Injeção higienizada da linha de somatória total das parcelas
+    # CORREÇÃO VISUAL: Removidos os caracteres de hífen que forçavam os bullets no rodapé do pandas
     cronograma_data.append([
-        "TOTAL", fmt_moeda(total_aporte_obra), fmt_moeda(total_p_sac), "-", fmt_moeda(total_p_price), "-"
+        "TOTAL", fmt_moeda(total_aporte_obra), fmt_moeda(total_p_sac), "", fmt_moeda(total_p_price), ""
     ])
     
-    # Convertendo a matriz corrigida para DataFrame para reativar a visualização
     df_cronograma = pd.DataFrame(cronograma_data, columns=[
         "Período", "Aporte Obra", "Parcela SAC", "Saldo SAC", "Parcela PRICE", "Saldo PRICE"
     ])
