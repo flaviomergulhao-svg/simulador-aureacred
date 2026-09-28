@@ -65,7 +65,7 @@ list_p_price = []
 total_aporte_obra = 0.0
 ganho_cdi_sac, ganho_cdi_price = 0.0, 0.0
 
-# Listas dedicadas para a Aba 2 (Garante imunidade contra SyntaxError)
+# Listas do cronograma
 c_periodo, c_aporte, c_p_sac, c_s_sac, c_p_pr, c_s_pr = [], [], [], [], [], []
 
 for i in range(m_venda + 1):
@@ -103,7 +103,6 @@ for i in range(m_venda + 1):
         else:
             total_aporte_obra += (credito_bancario / 6)
 
-        # Alimentando os arrays do cronograma de forma linear e isolada
         c_periodo.append(f"Mês {i}")
         c_aporte.append(fmt_moeda(ap_val) if i > 0 else fmt_moeda(credito_bancario / 6))
         c_p_sac.append(fmt_moeda(p_sac_v))
@@ -111,7 +110,7 @@ for i in range(m_venda + 1):
         c_p_pr.append(fmt_moeda(p_pr_v))
         c_s_pr.append(fmt_moeda(s_pr))
 
-# Adicionando a linha final de totais de forma segura e direta
+# Linha final de totais do cronograma
 c_periodo.append("TOTAL")
 c_aporte.append(fmt_moeda(total_aporte_obra))
 c_p_sac.append(fmt_moeda(sum(list_p_sac)))
@@ -141,9 +140,9 @@ roi_cdi_sac_pct = (ganho_cdi_sac / invest_bolso_sac) * 100 if invest_bolso_sac >
 roi_cdi_prc_pct = (ganho_cdi_price / invest_bolso_price) * 100 if invest_bolso_price > 0 else 0.0
 
 # =========================================================================
-# 3. INTERFACE DE ABAS COM EXPANSORES AUTOMATIZADOS
+# 3. INTERFACE VISUAL CONTÍNUA (IMUNE A ERROS DE INDENTAÇÃO)
 # =========================================================================
-tab1, tab2 = st.tabs(["📊 Mesa de Viabilidade", "🧮 Cronograma Mês a Mês Automatizado"])
+st.header("1. Simulação de Cenários de Capital")
 
 labels = [
     "Valor Geral de Vendas (VGV)", "(-) Crédito Estruturado Selecionado", 
@@ -157,36 +156,45 @@ labels = [
     "Múltiplo de Capital Combinado (MOIC)", "🔥 Rendimento Mensal Combinado Total"
 ]
 
-with tab1:
-    st.subheader("Simulação de Cenários de Capital")
-    
-    with st.expander("▶️ Cenário A: Execução Pura com Recursos Próprios (Sem Alavancagem)"):
-        val_pr = [
-            fmt_moeda(v_vgv), fmt_moeda(0.0), fmt_moeda(0.0), fmt_moeda(0.0), fmt_moeda(v_vgv), fmt_moeda(invest_bolso_proprio),
-            fmt_moeda(capital_ja_pago_terreno + saldo_devedor_terreno), fmt_moeda(0.0), fmt_moeda(v_obra), fmt_moeda(l_proprio), f"{(l_proprio/invest_bolso_proprio)*100:.2f}%",
-            f"{((l_proprio/invest_bolso_proprio)*100)/m_venda:.2f}%/mês", fmt_moeda(0.0), "0.00%", "0.00%/mês", fmt_moeda(l_proprio),
-            f"{moic_proprio:.2f}x", f"{((l_proprio/invest_bolso_proprio)*100)/m_venda:.2f}%/mês"
-        ]
-        st.table(pd.DataFrame({"Diretriz de Análise": labels, "Resultado": val_pr}))
+with st.expander("▶️ Cenário A: Execução Pura com Recursos Próprios (Sem Alavancagem)"):
+    val_pr = [
+        fmt_moeda(v_vgv), fmt_moeda(0.0), fmt_moeda(0.0), fmt_moeda(0.0), fmt_moeda(v_vgv), fmt_moeda(invest_bolso_proprio),
+        fmt_moeda(capital_ja_pago_terreno + saldo_devedor_terreno), fmt_moeda(0.0), fmt_moeda(v_obra), fmt_moeda(l_proprio), f"{(l_proprio/invest_bolso_proprio)*100:.2f}%",
+        f"{((l_proprio/invest_bolso_proprio)*100)/m_venda:.2f}%/mês", fmt_moeda(0.0), "0.00%", "0.00%/mês", fmt_moeda(l_proprio),
+        f"{moic_proprio:.2f}x", f"{((l_proprio/invest_bolso_proprio)*100)/m_venda:.2f}%/mês"
+    ]
+    st.table(pd.DataFrame({"Diretriz de Análise": labels, "Resultado": val_pr}))
 
-    with st.expander("▶️ Cenário B: Alavancagem Inteligente via Sistema SAC Concomitante"):
-        val_sc = [
-            fmt_moeda(v_vgv), fmt_moeda(credito_bancario), fmt_moeda(sobra_caixa_giro), fmt_moeda(s_sac), fmt_moeda(v_vgv - s_sac), fmt_moeda(invest_bolso_sac),
-            fmt_moeda(capital_ja_pago_terreno), fmt_moeda(recurso_proprio_comp), fmt_moeda(total_p_sac), fmt_moeda(l_sac_tijolo),
-            f"{(l_sac_tijolo/invest_bolso_sac)*100:.2f}%" if invest_bolso_sac>0 else "0.00%", f"{((l_sac_tijolo/invest_bolso_sac)*100)/m_venda:.2f}%/mês" if invest_bolso_sac>0 else "0.00%/mês",
-            fmt_moeda(ganho_cdi_sac), f"{roi_cdi_sac_pct:.2f}%", f"{roi_cdi_sac_pct/m_venda:.2f}%/mês", fmt_moeda(l_sac_total), f"{moic_sac:.2f}x",
-            f"{(l_sac_total/invest_bolso_sac*100)/m_venda:.2f}%/mês" if invest_bolso_sac>0 else "0.00%/mês"
-        ]
-        st.table(pd.DataFrame({"Diretriz de Análise": labels, "Resultado": val_sc}))
+with st.expander("▶️ Cenário B: Alavancagem Inteligente via Sistema SAC Concomitante"):
+    val_sc = [
+        fmt_moeda(v_vgv), fmt_moeda(credito_bancario), fmt_moeda(sobra_caixa_giro), fmt_moeda(s_sac), fmt_moeda(v_vgv - s_sac), fmt_moeda(invest_bolso_sac),
+        fmt_moeda(capital_ja_pago_terreno), fmt_moeda(recurso_proprio_comp), fmt_moeda(total_p_sac), fmt_moeda(l_sac_tijolo),
+        f"{(l_sac_tijolo/invest_bolso_sac)*100:.2f}%" if invest_bolso_sac>0 else "0.00%", f"{((l_sac_tijolo/invest_bolso_sac)*100)/m_venda:.2f}%/mês" if invest_bolso_sac>0 else "0.00%/mês",
+        fmt_moeda(ganho_cdi_sac), f"{roi_cdi_sac_pct:.2f}%", f"{roi_cdi_sac_pct/m_venda:.2f}%/mês", fmt_moeda(l_sac_total), f"{moic_sac:.2f}x",
+        f"{(l_sac_total/invest_bolso_sac*100)/m_venda:.2f}%/mês" if invest_bolso_sac>0 else "0.00%/mês"
+    ]
+    st.table(pd.DataFrame({"Diretriz de Análise": labels, "Resultado": val_sc}))
 
-    with st.expander("▶️ Cenário C: Alavancagem Corporativa Avançada via Sistema PRICE"):
-        val_pc = [
-            fmt_moeda(v_vgv), fmt_moeda(credito_bancario), fmt_moeda(sobra_caixa_giro), fmt_moeda(s_pr), fmt_moeda(v_vgv - s_pr), fmt_moeda(invest_bolso_price),
-            fmt_moeda(capital_ja_pago_terreno), fmt_moeda(recurso_proprio_comp), fmt_moeda(total_p_price), fmt_moeda(l_price_tijolo),
-            f"{(l_price_tijolo/invest_bolso_price)*100:.2f}%" if invest_bolso_price>0 else "0.00%", f"{((l_price_tijolo/invest_bolso_price)*100)/m_venda:.2f}%/mês" if invest_bolso_price>0 else "0.00%/mês",
-            fmt_moeda(ganho_cdi_price), f"{roi_cdi_prc_pct:.2f}%", f"{roi_cdi_prc_pct/m_venda:.2f}%/mês", fmt_moeda(l_price_total), f"{moic_price:.2f}x",
-            f"{(l_price_total/invest_bolso_price*100)/m_venda:.2f}%/mês" if invest_bolso_price>0 else "0.00%/mês"
-        ]
-        st.table(pd.DataFrame({"Diretriz de Análise": labels, "Resultado": val_pc}))
+with st.expander("▶️ Cenário C: Alavancagem Corporativa Avançada via Sistema PRICE"):
+    val_pc = [
+        fmt_moeda(v_vgv), fmt_moeda(credito_bancario), fmt_moeda(sobra_caixa_giro), fmt_moeda(s_pr), fmt_moeda(v_vgv - s_pr), fmt_moeda(invest_bolso_price),
+        fmt_moeda(capital_ja_pago_terreno), fmt_moeda(recurso_proprio_comp), fmt_moeda(total_p_price), fmt_moeda(l_price_tijolo),
+        f"{(l_price_tijolo/invest_bolso_price)*100:.2f}%" if invest_bolso_price>0 else "0.00%", f"{((l_price_tijolo/invest_bolso_price)*100)/m_venda:.2f}%/mês" if invest_bolso_price>0 else "0.00%/mês",
+        fmt_moeda(ganho_cdi_price), f"{roi_cdi_prc_pct:.2f}%", f"{roi_cdi_prc_pct/m_venda:.2f}%/mês", fmt_moeda(l_price_total), f"{moic_price:.2f}x",
+        f"{(l_price_total/invest_bolso_price*100)/m_venda:.2f}%/mês" if invest_bolso_price>0 else "0.00%/mês"
+    ]
+    st.table(pd.DataFrame({"Diretriz de Análise": labels, "Resultado": val_pc}))
 
-with tab2:
+st.markdown("---")
+st.header("2. Evolução Mensal Dinâmica de Amortização e Saldos")
+
+# Montando a tabela de apoio sem risco de travamento de margem
+df_cronograma = pd.DataFrame({
+    "Período": c_periodo,
+    "Aporte Obra": c_aporte,
+    "Parcela SAC": c_p_sac,
+    "Saldo SAC": c_s_sac,
+    "Parcela PRICE": c_p_pr,
+    "Saldo PRICE": c_s_pr
+})
+st.table(df_cronograma)
