@@ -12,7 +12,7 @@ def fmt_moeda(valor):
     return f"R$ {valor:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
 
 # =========================================================================
-# 1. PAINEL DE CONTROLE LATERAL (INPUTS CORRIGIDOS COM INTEIROS)
+# 1. PAINEL DE CONTROLE LATERAL (INPUTS)
 # =========================================================================
 st.sidebar.header("⚙️ Premissas Operacionais")
 v_vgv = st.sidebar.number_input("Valor Geral de Vendas (VGV)", min_value=100000.0, value=3600000.0, step=100000.0, format="%.2f")
@@ -25,15 +25,13 @@ if status_terreno == "Não":
 else:
     saldo_devedor_terreno = 0.00
 
-# CORREÇÃO DO SLIDER: Passando os limites como inteiros para eliminar o erro de arredondamento do passo
-teto_maximo_ltv = int(v_vgv * 0.50)
-minimo_slider = int(v_obra / 2)
-
+# Slider dinâmico amarrado ao limite estrito de 50% do VGV
+teto_maximo_ltv = v_vgv * 0.50
 credito_bancario = st.sidebar.slider(
     "Valor do Crédito Desejado (Limite 50% VGV)", 
-    min_value=minimo_slider, 
-    max_value=teto_maximo_ltv, 
-    value=teto_maximo_ltv, 
+    min_value=int(v_obra / 2), 
+    max_value=int(teto_maximo_ltv), 
+    value=int(teto_maximo_ltv), 
     step=10000,
     format="R$ %d"
 )
@@ -46,7 +44,7 @@ v_taoc = st.sidebar.number_input("Taxa de Estruturação (TAOC Fixa)", min_value
 tx_cdi = st.sidebar.number_input("Rendimento do Caixa Preservado (% a.m. CDI)", min_value=0.1, max_value=3.0, value=0.85, step=0.05) / 100.0
 
 # =========================================================================
-# 2. MOTOR DE ENGENHARIA FINANCEIRA (SAC E PRICE CONCOMITANTES)
+# 2. MOTOR DE ENGENHARIA FINANCEIRA (CÁLCULO DINÂMICO UNIFICADO)
 # =========================================================================
 demanda_capital_total = saldo_devedor_terreno + v_obra
 
@@ -108,6 +106,7 @@ for i in range(m_venda + 1):
             f"Mês {i}", txt_ap, fmt_moeda(p_sac_v), fmt_moeda(s_sac), fmt_moeda(p_pr_v), fmt_moeda(s_pr)
         ])
 
+# CONCILIAÇÃO INTEGRADA: Puxando os acumulados reais gerados no loop do cronograma
 invest_bolso_proprio = capital_ja_pago_terreno + saldo_devedor_terreno + v_obra
 invest_bolso_sac = capital_ja_pago_terreno + total_p_sac + recurso_proprio_comp - sobra_caixa_giro
 invest_bolso_price = capital_ja_pago_terreno + total_p_price + recurso_proprio_comp - sobra_caixa_giro
@@ -135,11 +134,11 @@ labels = [
     "Valor Geral de Vendas (VGV)", "(-) Crédito Estruturado Selecionado", 
     "(-) Capital de Giro Injetado no Caixa", "(-) Quitação da Dívida de Saída", 
     "(=) Receita Líquida pós-Quitação", "(-) Investimento Líquido do Bolso", 
-    "  Capital de Terreno já Aportado", "  Contrapartida Inicial (Gargalo LTV)", 
-    "  Desembolso de Parcelas (Caixa)", "(=) LUCRO OPERACIONAL DO TIJOLO", 
-    "  ROI Operacional do Empreendimento", "  Rendimento Mensal do Empreendimento",
-    "(+) RENDIMENTO DO CAPITAL PRESERVADO (CDI)", "  ROI Adicional Gerado pelo CDI", 
-    "  Rendimento Mensal Adicional (CDI)", "(=) BENEFÍCIO FINANCEIRO COMBINADO", 
+    "  • Capital de Terreno já Aportado", "  • Contrapartida Inicial (Gargalo LTV)", 
+    "  • Desembolso de Parcelas (Caixa)", "(=) LUCRO OPERACIONAL DO TIJOLO", 
+    "  • ROI Operacional do Empreendimento", "  • Rendimento Mensal do Empreendimento",
+    "(+) RENDIMENTO DO CAPITAL PRESERVADO (CDI)", "  • ROI Adicional Gerado pelo CDI", 
+    "  • Rendimento Mensal Adicional (CDI)", "(=) BENEFÍCIO FINANCEIRO COMBINADO", 
     "Múltiplo de Capital Combinado (MOIC)", "🔥 Rendimento Mensal Combinado Total"
 ]
 
@@ -149,7 +148,7 @@ with tab1:
     with st.expander("▶️ Cenário A: Execução Pura com Recursos Próprios (Sem Alavancagem)"):
         val_pr = [
             fmt_moeda(v_vgv), fmt_moeda(0.0), fmt_moeda(0.0), fmt_moeda(0.0), fmt_moeda(v_vgv), fmt_moeda(invest_bolso_proprio),
-            fmt_moeda(v_terr), fmt_moeda(0.0), fmt_moeda(v_obra), fmt_moeda(l_proprio), f"{(l_proprio/invest_bolso_proprio)*100:.2f}%",
+            fmt_moeda(capital_ja_pago_terreno + saldo_devedor_terreno), fmt_moeda(0.0), fmt_moeda(v_obra), fmt_moeda(l_proprio), f"{(l_proprio/invest_bolso_proprio)*100:.2f}%",
             f"{((l_proprio/invest_bolso_proprio)*100)/m_venda:.2f}%/mês", fmt_moeda(0.0), "0.00%", "0.00%/mês", fmt_moeda(l_proprio),
             f"{moic_proprio:.2f}x", f"{((l_proprio/invest_bolso_proprio)*100)/m_venda:.2f}%/mês"
         ]
@@ -177,12 +176,9 @@ with tab1:
 
 with tab2:
     st.subheader("Evolução Mensal Dinâmica de Amortização e Saldos")
-    
-    # CORREÇÃO VISUAL: Removidos os caracteres de hífen que forçavam os bullets no rodapé do pandas
     cronograma_data.append([
         "TOTAL", fmt_moeda(total_aporte_obra), fmt_moeda(total_p_sac), "", fmt_moeda(total_p_price), ""
     ])
-    
     df_cronograma = pd.DataFrame(cronograma_data, columns=[
         "Período", "Aporte Obra", "Parcela SAC", "Saldo SAC", "Parcela PRICE", "Saldo PRICE"
     ])
