@@ -44,7 +44,7 @@ v_taoc = st.sidebar.number_input("Taxa de Estruturação (TAOC Fixa)", min_value
 tx_cdi = st.sidebar.number_input("Rendimento do Caixa Preservado (% a.m. CDI)", min_value=0.1, max_value=3.0, value=0.85, step=0.05) / 100.0
 
 # =========================================================================
-# 2. MOTOR DE ENGENHARIA FINANCEIRA (CÁLCULO DINÂMICO UNIFICADO)
+# 2. MOTOR DE ENGENHARIA FINANCEIRA AJUSTADO (ALIXADO COM A CURVA REAL)
 # =========================================================================
 demanda_capital_total = saldo_devedor_terreno + v_obra
 
@@ -57,14 +57,16 @@ else:
 
 capital_ja_pago_terreno = v_terr - saldo_devedor_terreno
 
+# Calibração do saldo devedor para aproximar a curva à realidade contábil da planilha externa
 s_sac = (credito_bancario / 6) + v_taoc
 s_pr = (credito_bancario / 6) + v_taoc
 
-total_p_sac, total_p_price = 0.0, 0.0
+list_p_sac = []
+list_p_price = []
 total_aporte_obra = 0.0
 ganho_cdi_sac, ganho_cdi_price = 0.0, 0.0
 
-cronograma_data = []
+cronograma_raw = []
 
 for i in range(m_venda + 1):
     ap_val = (credito_bancario / 6) if (i < 12 and i % 2 == 0 and i > 0) else 0.00
@@ -75,38 +77,40 @@ for i in range(m_venda + 1):
     if i == 0:
         p_sac_v, p_pr_v = 0.00, 0.00
     else:
-        # SAC
+        # SAC Calibrada
         j_sac_m = s_sac * tx_juros
-        amort_sac_m = s_sac / 240
+        amort_sac_m = s_sac / (240 - i + 1)
         p_sac_v = amort_sac_m + j_sac_m
         s_sac -= amort_sac_m
 
-        # PRICE
+        # PRICE Calibrada
         j_pr_m = s_pr * tx_juros
-        fator_pmt = (tx_juros * ((1 + tx_juros)**240)) / (((1 + tx_juros)**240) - 1)
+        fator_pmt = (tx_juros * ((1 + tx_juros)**(240 - i + 1))) / (((1 + tx_juros)**(240 - i + 1)) - 1)
         p_pr_v = s_pr * fator_pmt
         s_pr -= (p_pr_v - j_pr_m)
 
     if i <= m_venda:
         if i > 0:
-            total_p_sac += p_sac_v
-            total_p_price += p_pr_v
+            list_p_sac.append(p_sac_v)
+            list_p_price.append(p_pr_v)
             total_aporte_obra += ap_val
             
-            caixa_pres_sac = (v_obra / m_venda) * i - total_p_sac + sobra_caixa_giro
-            caixa_pres_prc = (v_obra / m_venda) * i - total_p_price + sobra_caixa_giro
+            caixa_pres_sac = (v_obra / m_venda) * i - sum(list_p_sac) + sobra_caixa_giro
+            caixa_pres_prc = (v_obra / m_venda) * i - sum(list_p_price) + sobra_caixa_giro
             
             if caixa_pres_sac > 0: ganho_cdi_sac += caixa_pres_sac * tx_cdi
             if caixa_pres_prc > 0: ganho_cdi_price += caixa_pres_prc * tx_cdi
         else:
             total_aporte_obra += (credito_bancario / 6)
 
-        txt_ap = fmt_moeda(ap_val) if i > 0 else fmt_moeda(credito_bancario / 6)
-        cronograma_data.append([
-            f"Mês {i}", txt_ap, fmt_moeda(p_sac_v), fmt_moeda(s_sac), fmt_moeda(p_pr_v), fmt_moeda(s_pr)
-        ])
+        cronograma_raw.append({
+            "idx": i, "ap": ap_val, "p_sac": p_sac_v, "s_sac": s_sac, "p_pr": p_pr_v, "s_pr": s_pr
+        })
 
-# CONCILIAÇÃO INTEGRADA: Puxando os acumulados reais gerados no loop do cronograma
+# UNIFICAÇÃO DOS TOTAIS DA PONTA DO LÁPIS (Garante igualdade entre abas)
+total_p_sac = sum(list_p_sac)
+total_p_price = sum(list_p_price)
+
 invest_bolso_proprio = capital_ja_pago_terreno + saldo_devedor_terreno + v_obra
 invest_bolso_sac = capital_ja_pago_terreno + total_p_sac + recurso_proprio_comp - sobra_caixa_giro
 invest_bolso_price = capital_ja_pago_terreno + total_p_price + recurso_proprio_comp - sobra_caixa_giro
@@ -126,7 +130,7 @@ roi_cdi_sac_pct = (ganho_cdi_sac / invest_bolso_sac) * 100 if invest_bolso_sac >
 roi_cdi_prc_pct = (ganho_cdi_price / invest_bolso_price) * 100 if invest_bolso_price > 0 else 0.0
 
 # =========================================================================
-# 3. INTERFACE DE ABAS COM EXPANSORES AUTOMATIZADOS (IMUNE A CORTES)
+# 3. INTERFACE DE ABAS
 # =========================================================================
 tab1, tab2 = st.tabs(["📊 Mesa de Viabilidade", "🧮 Cronograma Mês a Mês Automatizado"])
 
@@ -176,10 +180,16 @@ with tab1:
 
 with tab2:
     st.subheader("Evolução Mensal Dinâmica de Amortização e Saldos")
-    cronograma_data.append([
-        "TOTAL", fmt_moeda(total_aporte_obra), fmt_moeda(total_p_sac), "", fmt_moeda(total_p_price), ""
-    ])
-    df_cronograma = pd.DataFrame(cronograma_data, columns=[
-        "Período", "Aporte Obra", "Parcela SAC", "Saldo SAC", "Parcela PRICE", "Saldo PRICE"
-    ])
-    st.table(df_cronograma)
+    
+    cronograma_final = []
+    for row in cronograma_raw:
+        cronograma_final.append([
+            f"Mês {row['idx']}",
+            fmt_moeda(row['ap']) if row['idx'] > 0 else fmt_moeda(credito_bancario / 6),
+            fmt_moeda(row['p_sac']),
+            fmt_moeda(row['s_sac']),
+            fmt_moeda(row['p_pr']),
+            fmt_moeda(row['s_pr'])
+        ])
+        
+    cronograma_final.append([
