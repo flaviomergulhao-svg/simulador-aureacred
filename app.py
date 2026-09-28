@@ -97,14 +97,14 @@ for i in range(m_venda + 1):
             if caixa_pres_sac > 0: ganho_cdi_sac += caixa_pres_sac * tx_cdi
             if caixa_pres_prc > 0: ganho_cdi_price += caixa_pres_prc * tx_cdi
 
-        txt_ap = f"R$ {(credito_bancario / 6) if i==0 else ap_val:,.2f}"
+        txt_ap = fmt_moeda(ap_val) if i > 0 else fmt_moeda(credito_bancario / 6)
         cronograma_data.append({
             "Período": f"Mês {i}",
             "Aporte Obra": txt_ap,
-            "Parcela SAC": f"R$ {p_sac_v:,.2f}",
-            "Saldo SAC": f"R$ {s_sac:,.2f}",
-            "Parcela PRICE": f"R$ {p_pr_v:,.2f}",
-            "Saldo PRICE": f"R$ {s_pr:,.2f}"
+            "Parcela SAC": fmt_moeda(p_sac_v),
+            "Saldo SAC": fmt_moeda(s_sac),
+            "Parcela PRICE": fmt_moeda(p_pr_v),
+            "Saldo PRICE": fmt_moeda(s_pr)
         })
 
 invest_bolso_proprio = capital_ja_pago_terreno + saldo_devedor_terreno + v_obra
@@ -130,13 +130,12 @@ roi_cdi_prc_pct = (ganho_cdi_price / invest_bolso_price) * 100 if invest_bolso_p
 # =========================================================================
 tab1, tab2 = st.tabs(["📊 Mesa de Viabilidade", "🧮 Cronograma Mês a Mês Automatizado"])
 
-# Lista padrão de rótulos do sumário vertical
 labels = [
     "Valor Geral de Vendas (VGV)", "(-) Crédito Estruturado Selecionado", 
-    "(-) Capital de Giro Injetado", "(-) Quitação da Dívida de Saída", 
+    "(-) Capital de Giro Injetado no Caixa", "(-) Quitação da Dívida de Saída", 
     "(=) Receita Líquida pós-Quitação", "(-) Investimento Líquido do Bolso", 
-    "  • Capital de Terreno já Aportado", "  • Contrapartida Inicial (Gargalo LTV)", 
-    "  • Desembolso de Parcelas (Caixa)", "(=) LUCRO OPERACIONAL DO TIJOLO", 
+    "  Capital de Terreno já Aportado", "  Contrapartida Inicial (Gargalo LTV)", 
+    "  Desembolso de Parcelas (Caixa)", "(=) LUCRO OPERACIONAL DO TIJOLO", 
     "  • ROI Operacional do Empreendimento", "  • Rendimento Mensal do Empreendimento",
     "(+) RENDIMENTO DO CAPITAL PRESERVADO (CDI)", "  • ROI Adicional Gerado pelo CDI", 
     "  • Rendimento Mensal Adicional (CDI)", "(=) BENEFÍCIO FINANCEIRO COMBINADO", 
@@ -146,9 +145,6 @@ labels = [
 with tab1:
     st.subheader("Simulação de Cenários de Capital")
     
-    # ---------------------------------------------------------------------
-    # EXPANSER 1: CENÁRIO A (PRÓPRIO)
-    # ---------------------------------------------------------------------
     with st.expander("▶️ Cenário A: Execução Pura com Recursos Próprios (Sem Alavancagem)"):
         val_pr = [
             fmt_moeda(v_vgv), fmt_moeda(0.0), fmt_moeda(0.0), fmt_moeda(0.0), fmt_moeda(v_vgv), fmt_moeda(invest_bolso_proprio),
@@ -158,9 +154,6 @@ with tab1:
         ]
         st.table(pd.DataFrame({"Diretriz de Análise": labels, "Resultado": val_pr}))
 
-    # ---------------------------------------------------------------------
-    # EXPANSER 2: CENÁRIO B (SAC)
-    # ---------------------------------------------------------------------
     with st.expander("▶️ Cenário B: Alavancagem Inteligente via Sistema SAC Concomitante"):
         val_sc = [
             fmt_moeda(v_vgv), fmt_moeda(credito_bancario), fmt_moeda(sobra_caixa_giro), fmt_moeda(s_sac), fmt_moeda(v_vgv - s_sac), fmt_moeda(invest_bolso_sac),
@@ -171,9 +164,6 @@ with tab1:
         ]
         st.table(pd.DataFrame({"Diretriz de Análise": labels, "Resultado": val_sc}))
 
-    # ---------------------------------------------------------------------
-    # EXPANSER 3: CENÁRIO C (PRICE)
-    # ---------------------------------------------------------------------
     with st.expander("▶️ Cenário C: Alavancagem Corporativa Avançada via Sistema PRICE"):
         val_pc = [
             fmt_moeda(v_vgv), fmt_moeda(credito_bancario), fmt_moeda(sobra_caixa_giro), fmt_moeda(s_pr), fmt_moeda(v_vgv - s_pr), fmt_moeda(invest_bolso_price),
@@ -186,3 +176,5 @@ with tab1:
 
 with tab2:
     st.subheader("Evolução Mensal Dinâmica de Amortização e Saldos")
+    df_cronograma = pd.DataFrame(cronograma_data)
+    st.dataframe(df_cronograma, height=600, use_container_width=True)
