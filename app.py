@@ -44,7 +44,7 @@ v_taoc = st.sidebar.number_input("Taxa de Estruturação (TAOC Fixa)", min_value
 tx_cdi = st.sidebar.number_input("Rendimento do Caixa Preservado (% a.m. CDI)", min_value=0.1, max_value=3.0, value=0.85, step=0.05) / 100.0
 
 # =========================================================================
-# 2. MOTOR DE ENGENHARIA FINANCEIRA (CONCILIAÇÃO REAL DE CAIXA DE LAND BANKING)
+# 2. MOTOR DE ENGENHARIA FINANCEIRA (SAC E PRICE CONCOMITANTES)
 # =========================================================================
 demanda_capital_total = saldo_devedor_terreno + v_obra
 
@@ -61,6 +61,7 @@ s_sac = (credito_bancario / 6) + v_taoc
 s_pr = (credito_bancario / 6) + v_taoc
 
 total_p_sac, total_p_price = 0.0, 0.0
+total_aporte_obra = 0.0
 ganho_cdi_sac, ganho_cdi_price = 0.0, 0.0
 
 cronograma_data = []
@@ -90,22 +91,20 @@ for i in range(m_venda + 1):
         if i > 0:
             total_p_sac += p_sac_v
             total_p_price += p_pr_v
+            total_aporte_obra += ap_val
             
             caixa_pres_sac = (v_obra / m_venda) * i - total_p_sac + sobra_caixa_giro
             caixa_pres_prc = (v_obra / m_venda) * i - total_p_price + sobra_caixa_giro
             
             if caixa_pres_sac > 0: ganho_cdi_sac += caixa_pres_sac * tx_cdi
             if caixa_pres_prc > 0: ganho_cdi_price += caixa_pres_prc * tx_cdi
+        else:
+            total_aporte_obra += (credito_bancario / 6)
 
         txt_ap = fmt_moeda(ap_val) if i > 0 else fmt_moeda(credito_bancario / 6)
-        cronograma_data.append({
-            "Período": f"Mês {i}",
-            "Aporte Obra": txt_ap,
-            "Parcela SAC": fmt_moeda(p_sac_v),
-            "Saldo SAC": fmt_moeda(s_sac),
-            "Parcela PRICE": fmt_moeda(p_pr_v),
-            "Saldo PRICE": fmt_moeda(s_pr)
-        })
+        cronograma_data.append([
+            f"Mês {i}", txt_ap, fmt_moeda(p_sac_v), fmt_moeda(s_sac), fmt_moeda(p_pr_v), fmt_moeda(s_pr)
+        ])
 
 invest_bolso_proprio = capital_ja_pago_terreno + saldo_devedor_terreno + v_obra
 invest_bolso_sac = capital_ja_pago_terreno + total_p_sac + recurso_proprio_comp - sobra_caixa_giro
@@ -126,7 +125,7 @@ roi_cdi_sac_pct = (ganho_cdi_sac / invest_bolso_sac) * 100 if invest_bolso_sac >
 roi_cdi_prc_pct = (ganho_cdi_price / invest_bolso_price) * 100 if invest_bolso_price > 0 else 0.0
 
 # =========================================================================
-# 3. INTERFACE DE ABAS COM EXPANSORES AUTOMATIZADOS (IMUNE A CORTES)
+# 3. INTERFACE GRÁFICA ATUALIZADA
 # =========================================================================
 tab1, tab2 = st.tabs(["📊 Mesa de Viabilidade", "🧮 Cronograma Mês a Mês Automatizado"])
 
@@ -134,8 +133,8 @@ labels = [
     "Valor Geral de Vendas (VGV)", "(-) Crédito Estruturado Selecionado", 
     "(-) Capital de Giro Injetado no Caixa", "(-) Quitação da Dívida de Saída", 
     "(=) Receita Líquida pós-Quitação", "(-) Investimento Líquido do Bolso", 
-    "  Capital de Terreno já Aportado", "  Contrapartida Inicial (Gargalo LTV)", 
-    "  Desembolso de Parcelas (Caixa)", "(=) LUCRO OPERACIONAL DO TIJOLO", 
+    "  • Capital de Terreno já Aportado", "  • Contrapartida Inicial (Gargalo LTV)", 
+    "  • Desembolso de Parcelas (Caixa)", "(=) LUCRO OPERACIONAL DO TIJOLO", 
     "  • ROI Operacional do Empreendimento", "  • Rendimento Mensal do Empreendimento",
     "(+) RENDIMENTO DO CAPITAL PRESERVADO (CDI)", "  • ROI Adicional Gerado pelo CDI", 
     "  • Rendimento Mensal Adicional (CDI)", "(=) BENEFÍCIO FINANCEIRO COMBINADO", 
@@ -176,5 +175,14 @@ with tab1:
 
 with tab2:
     st.subheader("Evolução Mensal Dinâmica de Amortização e Saldos")
-    df_cronograma = pd.DataFrame(cronograma_data)
-    st.dataframe(df_cronograma, height=600, use_container_width=True)
+    
+    # ADIÇÃO SOLICITADA: Injeção higienizada da linha de somatória total das parcelas
+    cronograma_data.append([
+        "TOTAL", fmt_moeda(total_aporte_obra), fmt_moeda(total_p_sac), "-", fmt_moeda(total_p_price), "-"
+    ])
+    
+    # Convertendo a matriz corrigida para DataFrame para reativar a visualização
+    df_cronograma = pd.DataFrame(cronograma_data, columns=[
+        "Período", "Aporte Obra", "Parcela SAC", "Saldo SAC", "Parcela PRICE", "Saldo PRICE"
+    ])
+    st.table(df_cronograma)
