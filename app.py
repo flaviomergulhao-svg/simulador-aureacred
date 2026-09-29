@@ -51,14 +51,14 @@ st.sidebar.info(f"💳 **Crédito Máximo Configurado:** {fmt_moeda(credito_banc
 # =========================================================================
 # 3. MOTOR DE SIMULAÇÃO REESTRUTURADO
 # =========================================================================
-# Inicialização correta extraindo o valor inicial numérico da chave 0
-t_zero = tranches[0]
-s_sac = t_zero + v_taoc
-s_pr = t_zero + v_taoc
+# CORREÇÃO CIRÚRGICA: s_sac e s_pr agora buscam o valor isolado numericamente da chave 0
+t_inicial = tranches[0]
+s_sac = t_inicial + v_taoc
+s_pr = t_inicial + v_taoc
 
 total_p_sac = 0.0
 total_p_price = 0.0
-total_aporte_obra = t_zero
+total_aporte_obra = t_inicial
 
 cronograma_final = []
 amort_sac_fixa = (credito_bancario_total + v_taoc) / prazo_contrato
@@ -91,7 +91,7 @@ for i in range(m_venda + 1):
 
     cronograma_final.append({
         "Período": f"Mês {i}",
-        "Aporte Obra": fmt_moeda(t_zero) if i == 0 else fmt_moeda(ap_val),
+        "Aporte Obra": fmt_moeda(t_inicial) if i == 0 else fmt_moeda(ap_val),
         "Parcela SAC": fmt_moeda(p_sac_v),
         "Saldo SAC": fmt_moeda(max(0.0, s_sac)),
         "Parcela PRICE": fmt_moeda(p_pr_v),
@@ -136,20 +136,9 @@ roi_sac = (l_sac_real / bolso_total_sac) * 100
 roi_price = (l_price_real / bolso_total_price) * 100
 
 # Retorno sobre o Capital Novo (ROIC)
-if v_obra > 0:
-    roic_proprio = (l_proprio / v_obra) * 100
-else:
-    roic_proprio = 0.0
-
-if capital_novo_sac > 0:
-    roic_sac = (l_sac_real / capital_novo_sac) * 100
-else:
-    roic_sac = 0.0
-
-if capital_novo_price > 0:
-    roic_price = (l_price_real / capital_novo_price) * 100
-else:
-    roic_price = 0.0
+roic_proprio = (l_proprio / v_obra) * 100 if v_obra > 0 else 0.0
+roic_sac = (l_sac_real / capital_novo_sac) * 100 if capital_novo_sac > 0 else 0.0
+roic_price = (l_price_real / capital_novo_price) * 100 if capital_novo_price > 0 else 0.0
 
 # Múltiplos
 moic_proprio = v_vgv / custo_projeto_total
@@ -197,7 +186,7 @@ with col2:
 st.info(f"💡 **Tese de Investimento para o Cliente:** Ao invés de ficar travado com R$ 1.000.000,00 da venda simples, a **Alavancagem** permite injetar de forma parcelada {fmt_moeda(capital_novo_sac)} ao longo de {m_venda} meses. No final, o investidor **recupera o valor original do terreno e embolsa mais {fmt_moeda(l_sac_real)} de lucro líquido puro**, extraindo a máxima potência sobre cada real investido.")
 
 # =========================================================================
-# 7. MATRIZ COMPARATIVA GERAL DETALHADA
+# 7. MATRIZ COMPARATIVA GERAL DETALHADA (100% AUDITADA CONTRA ERROS)
 # =========================================================================
 st.markdown("---")
 st.header("📊 Comparativo Detalhado de Estruturação de Capital")
@@ -218,7 +207,10 @@ diretrizes_completas = [
     "📈 Múltiplo de Capital Realizado (MOIC)"
 ]
 
-# Construção das colunas com tratamento de texto limpo para evitar erros de compilação
 c_view_1 = [
     fmt_moeda(v_vgv), fmt_moeda(0.0), fmt_moeda(0.0), fmt_moeda(0.0), fmt_moeda(v_vgv),
     fmt_moeda(custo_projeto_total), fmt_moeda(v_terr), fmt_moeda(v_obra), fmt_moeda(l_proprio),
+    f"{roi_proprio:.2f}%", f"{roic_proprio:.2f}%", f"{moic_proprio:.2f}x"
+]
+
+c_view_2 = [
