@@ -40,13 +40,11 @@ credito_bancario_total = 1800000.0
 # =========================================================================
 # 2. MOTOR DE SIMULAÇÃO REESTRUTURADO E CORRIGIDO
 # =========================================================================
-# CORREÇÃO AQUI: s_sac e s_pr agora buscam tranches[0] (apenas o valor numérico do Mês 0)
+# Correção do TypeError utilizando a primeira tranche do dicionário
 s_sac = tranches[0] + v_taoc
 s_pr = tranches[0] + v_taoc
 
 total_p_sac, total_p_price = 0.0, 0.0
-total_amort_sac, total_amort_price = 0.0, 0.0
-total_juros_sac, total_juros_price = 0.0, 0.0
 total_aporte_obra = tranches[0]
 
 cronograma_final = []
@@ -99,21 +97,18 @@ cronograma_final.append({
 })
 
 # =========================================================================
-# 3. CONCILIAÇÃO FINANCEIRA ALINHADA (REGRA DE SUBSTRATO DO TERRENO)
+# 3. CONCILIAÇÃO FINANCEIRA ALINHADA COM EXPOSIÇÃO LÍQUIDA DE RISCO
 # =========================================================================
-# O banco cobre a obra total de 1.518.000,00. A sobra de 282.000,00 amortiza o lote de 1M.
-# Portanto, a fatia do Terreno paga pelo próprio bolso do incorporador é o CAPITAL PRÓPRIO:
+# O banco cobre a obra de 1.518M. A sobra de 282k abate o lote de 1M.
 capital_restante_terreno = v_terr - (credito_bancario_total - v_obra)
-
-# Custos puros do projeto físico
 custo_projeto_total = v_terr + v_obra
 
-# LUCROS LÍQUIDOS REAIS
+# Lucros Líquidos Reais baseados no VGV final e custos totais da operação
 l_proprio = v_vgv - custo_projeto_total
 l_sac_real = v_vgv - quit_sac - total_p_sac - capital_restante_terreno
 l_price_real = v_vgv - quit_price - total_p_price - capital_restante_terreno
 
-# ROI Real (Calculado sobre o capital próprio aportado na fração restante do terreno)
+# ROIs calculados estritamente sobre a exposição inicial de capital do investidor
 roi_proprio = (l_proprio / custo_projeto_total) * 100
 roi_sac = (l_sac_real / capital_restante_terreno) * 100
 roi_price = (l_price_real / capital_restante_terreno) * 100
