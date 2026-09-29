@@ -17,8 +17,6 @@ def fmt_moeda(valor):
 st.sidebar.header("⚙️ Premissas Operacionais")
 v_vgv = st.sidebar.number_input("Valor Geral de Vendas (VGV)", min_value=100000.0, value=3600000.0, step=100000.0, format="%.2f")
 v_obra = st.sidebar.number_input("Orçamento Estimado da Obra", min_value=100000.0, value=1518000.0, step=5000.0, format="%.2f")
-
-# ALTERAÇÃO REALIZADA AQUI: Mudança no texto do label para "Valor do Terreno"
 v_terr = st.sidebar.number_input("Valor do Terreno", min_value=0.0, value=1000000.0, step=50000.0, format="%.2f")
 
 status_terreno = st.sidebar.selectbox("O Terreno está Quitado?", ["Sim", "Não"])
@@ -50,11 +48,12 @@ st.sidebar.info(f"💳 **Crédito Máximo Liberado:** {fmt_moeda(credito_bancari
 # =========================================================================
 # 3. MOTOR DE SIMULAÇÃO REESTRUTURADO E CORRIGIDO
 # =========================================================================
-s_sac = tranches + v_taoc
-s_pr = tranches + v_taoc
+# CORREÇÃO AQUI: s_sac e s_pr agora buscam a chave [0] do dicionário de tranches
+s_sac = tranches[0] + v_taoc
+s_pr = tranches[0] + v_taoc
 
 total_p_sac, total_p_price = 0.0, 0.0
-total_aporte_obra = tranches
+total_aporte_obra = tranches[0]
 
 cronograma_final = []
 amort_sac_fixa = (credito_bancario_total + v_taoc) / prazo_contrato
@@ -86,7 +85,7 @@ for i in range(m_venda + 1):
 
     cronograma_final.append({
         "Período": f"Mês {i}",
-        "Aporte Obra": fmt_moeda(tranches) if i == 0 else fmt_moeda(ap_val),
+        "Aporte Obra": fmt_moeda(tranches[0]) if i == 0 else fmt_moeda(ap_val),
         "Parcela SAC": fmt_moeda(p_sac_v),
         "Saldo SAC": fmt_moeda(max(0.0, s_sac)),
         "Parcela PRICE": fmt_moeda(p_pr_v),
