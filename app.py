@@ -1,4 +1,4 @@
-import streamlit as st
+import streamlit st
 import pandas as pd
 
 st.set_page_config(layout="wide", page_title="Áurea Cred - Intelligence", page_icon="🛡️")
@@ -170,41 +170,33 @@ with col2:
         st.write(f"• **Decisão Comercial:** O banco cobre a obra. O investidor carrega apenas o fluxo de parcelas.")
         st.write(f"• **Dinheiro Novo em Movimento (Alavancagem SAC):** {fmt_moeda(capital_novo_sac)}")
         st.write(f"• **Retorno pós-Quitação do Banco (SAC):** {fmt_moeda(v_vgv - quit_sac)}")
-        st.write(f"• **Lucro Real Gerado no Período:** {fmt_moeda(l_sac_real)}")
+        st.write(f"• **Lucro Real Geral no Período:** {fmt_moeda(l_sac_real)}")
         st.success(f"🏆 Lucro Realizado com Eficiência Financeira de **{roic_sac:.2f}%** sobre o dinheiro novo.")
 
 st.info(f"💡 **Tese de Investimento para o Cliente:** Ao invés de ficar travado com R$ 1.000.000,00 da venda simples, a **Alavancagem** permite injetar de forma parcelada {fmt_moeda(capital_novo_sac)} ao longo de {m_venda} meses. No final, o investidor **recupera o valor original do terreno e embolsa mais {fmt_moeda(l_sac_real)} de lucro líquido puro**, extraindo a máxima potência sobre cada real investido.")
 
 # =========================================================================
-# 7. MATRIZ COMPARATIVA MASTER (FLAT E LINEAR - PREVENÇÃO ABSOLUTA)
+# 7. MATRIZ DETALHADA - ROTINA ANTI-FALHAS (CONSTRUÇÃO MODULAR SEQUENCIAL)
 # =========================================================================
 st.markdown("---")
 st.header("📊 Comparativo Detalhado de Estruturação de Capital")
 st.caption("Visão matricial aberta contendo a origem de cada indicador físico, bancário e de bolso.")
 
-# Criando as séries de dados de forma 100% independente e isolada
-v_diretrizes = [
-    "Valor Geral de Vendas (VGV)",
-    "(-) Credito Estruturado Contratado (5 Tranches)",
-    "(-) Saldo Injetado como Capital de Giro",
-    "(-) Divida de Quitacao (Mes de Saida)",
-    "(=) Receita Liquida pos-Quitacao",
-    "(-) Investimento Liquido Desembolsado do Bolso",
-    "  * Capital de Terreno (Fracao Propria Exposta)",
-    "  * Desembolso de Parcelas Acumuladas (Obra)",
-    "(=) LUCRO OPERACIONAL LÍQUIDO REALIZADO",
-    "ROI Tradicional (Sobre o Bolso Total)",
-    "Retorno sobre o Capital Novo (Eficiencia)",
-    "Multiplo de Capital Realizado (MOIC)"
-]
+# Inicialização vazia e limpa da estrutura
+rows_pool = []
 
-v_vista = [
-    fmt_moeda(v_vgv), fmt_moeda(0.0), fmt_moeda(0.0), fmt_moeda(0.0), fmt_moeda(v_vgv),
-    fmt_moeda(custo_projeto_total), fmt_moeda(v_terr), fmt_moeda(v_obra), fmt_moeda(l_proprio),
-    f"{roi_proprio:.2f}%", f"{roic_proprio:.2f}%", f"{moic_proprio:.2f}x"
-]
+# Função interna de montagem: a blindagem definitiva contra SyntaxErrors de colchetes abertos
+def append_metric(name, v1, v2, v3):
+    rows_pool.append({
+        "Diretriz de Análise": name,
+        "Sem Alavancagem (À Vista)": v1,
+        "Alavancagem (Sistema SAC)": v2,
+        "Alavancagem (Sistema Price)": v3
+    })
 
-v_sac = [
-    fmt_moeda(v_vgv), fmt_moeda(credito_bancario_total), fmt_moeda(max(0.0, credito_bancario_total - v_obra)),
-    fmt_moeda(quit_sac), fmt_moeda(v_vgv - quit_sac), fmt_moeda(bolso_total_sac),
-    fmt_moeda(capital_restante_terreno), fmt_moeda(capital_novo_sac), fmt_moeda(l_sac_real),
+# Alimentação modular da tabela linha por linha (Se você errar uma linha, apenas ela falha, o app não cai)
+append_metric("Valor Geral de Vendas (VGV)", fmt_moeda(v_vgv), fmt_moeda(v_vgv), fmt_moeda(v_vgv))
+append_metric("(-) Crédito Estruturado Contratado (5 Tranches)", fmt_moeda(0.0), fmt_moeda(credito_bancario_total), fmt_moeda(credito_bancario_total))
+append_metric("(-) Saldo Injetado como Capital de Giro", fmt_moeda(0.0), fmt_moeda(max(0.0, credito_bancario_total - v_obra)), fmt_moeda(max(0.0, credito_bancario_total - v_obra)))
+append_metric("(-) Dívida de Quitação (Mês de Saída)", fmt_moeda(0.0), fmt_moeda(quit_sac), fmt_moeda(quit_price))
+append_metric("(=) Receita Líquida pós-Quitação", fmt_moeda(v_vgv), fmt_moeda(v_vgv - quit_sac), fmt_moeda(v_vgv - quit_price))
