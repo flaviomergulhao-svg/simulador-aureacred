@@ -40,11 +40,14 @@ credito_bancario_total = 1800000.0
 # =========================================================================
 # 2. MOTOR DE SIMULAÇÃO REESTRUTURADO E CORRIGIDO
 # =========================================================================
-s_sac = tranches + v_taoc
-s_pr = tranches + v_taoc
+# CORREÇÃO AQUI: s_sac e s_pr agora buscam tranches[0] (apenas o valor numérico do Mês 0)
+s_sac = tranches[0] + v_taoc
+s_pr = tranches[0] + v_taoc
 
 total_p_sac, total_p_price = 0.0, 0.0
-total_aporte_obra = tranches
+total_amort_sac, total_amort_price = 0.0, 0.0
+total_juros_sac, total_juros_price = 0.0, 0.0
+total_aporte_obra = tranches[0]
 
 cronograma_final = []
 amort_sac_fixa = (credito_bancario_total + v_taoc) / prazo_contrato
@@ -76,7 +79,7 @@ for i in range(m_venda + 1):
 
     cronograma_final.append({
         "Período": f"Mês {i}",
-        "Aporte Obra": fmt_moeda(tranches) if i == 0 else fmt_moeda(ap_val),
+        "Aporte Obra": fmt_moeda(tranches[0]) if i == 0 else fmt_moeda(ap_val),
         "Parcela SAC": fmt_moeda(p_sac_v),
         "Saldo SAC": fmt_moeda(max(0.0, s_sac)),
         "Parcela PRICE": fmt_moeda(p_pr_v),
@@ -105,7 +108,7 @@ capital_restante_terreno = v_terr - (credito_bancario_total - v_obra)
 # Custos puros do projeto físico
 custo_projeto_total = v_terr + v_obra
 
-# LUCROS LÍQUIDOS REAIS (Batem exatamente com os R$ 692.218,25 do print de tela)
+# LUCROS LÍQUIDOS REAIS
 l_proprio = v_vgv - custo_projeto_total
 l_sac_real = v_vgv - quit_sac - total_p_sac - capital_restante_terreno
 l_price_real = v_vgv - quit_price - total_p_price - capital_restante_terreno
