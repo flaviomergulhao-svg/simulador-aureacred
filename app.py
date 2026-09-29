@@ -30,16 +30,36 @@ tx_juros = st.sidebar.number_input("Taxa Financiamento (% a.m.)", min_value=0.1,
 v_taoc = st.sidebar.number_input("Taxa de Estruturação (TAC)", min_value=0.0, value=80000.0, step=5000.0, format="%.2f")
 tx_cdi = st.sidebar.number_input("Rendimento do Caixa Preservado (% a.m. CDI)", min_value=0.1, max_value=3.0, value=0.85, step=0.05) / 100.0
 
-# NOVA BARRA DE AJUSTE DINÂMICO PEDIDA
 m_venda = st.sidebar.slider("Prazo para Venda/Quitação (Meses)", min_value=6, max_value=48, value=18, step=1)
 prazo_contrato = 240
 
-# Tranches rígidas de R$ 360k do cenário de LTV de 50%
-tranches = {0: 360000.0, 2: 360000.0, 4: 360000.0, 6: 360000.0, 8: 360000.0}
-credito_bancario_total = 1800000.0
+# =========================================================================
+# 2. CÁLCULO DINÂMICO DO TETO DE CRÉDITO (SUA REGRA DE NEGÓCIO)
+# =========================================================================
+# Regra 1: Max 50% do VGV
+limite_vgv = v_vgv * 0.50
+
+# Regra 2: Custo total de investimento necessário (Obra + Quitação do Terreno Atual)
+limite_necessidade = v_obra + saldo_devedor_terreno
+
+# O crédito real concedido será o menor entre os dois limites
+credito_bancario_total = min(limite_vgv, limite_necessidade)
+
+# Divisão das 5 tranches de forma 100% dinâmica baseada no teto liberado
+valor_tranche_dinamica = credito_bancario_total / 5
+tranches = {
+    0: valor_tranche_dinamica, 
+    2: valor_tranche_dinamica, 
+    4: valor_tranche_dinamica, 
+    6: valor_tranche_dinamica, 
+    8: valor_tranche_dinamica
+}
+
+# Informativo visual sobre o limite calculado no topo da barra lateral
+st.sidebar.info(f"💳 **Crédito Máximo Liberado:** {fmt_moeda(credito_bancario_total)}")
 
 # =========================================================================
-# 2. MOTOR DE SIMULAÇÃO DINÂMICO
+# 3. MOTOR DE SIMULAÇÃO REESTRUTURADO E CORRIGIDO
 # =========================================================================
 s_sac = tranches[0] + v_taoc
 s_pr = tranches[0] + v_taoc
@@ -97,21 +117,30 @@ cronograma_final.append({
 })
 
 # =========================================================================
-# 3. CONCILIAÇÃO FINANCEIRA COM PRAZO DINÂMICO (ROI CORRIGIDO)
+# 4. CONCILIAÇÃO FINANCEIRA COM TRAVA DE CRÉDITO
 # =========================================================================
-capital_restante_terreno = v_terr - (credito_bancario_total - v_obra)
+# O capital que de fato já estava pago pelo cliente no lote antes da nova operação
+capital_ja_pago_terreno = v_terr - saldo_devedor_terreno
+
+# Definição do aporte de recursos próprios complementar (Caso o limite do VGV seja menor que a necessidade)
+aporte_obra_proprio = max(0.0, (v_obra + saldo_devedor_terreno) - credito_bancario_total)
+
+# O capital de entrada real imobilizado pelo construtor
+capital_entrada_real = capital_ja_pago_terreno + p_sac_v * 0 # Apenas indexador de largada
+
+# Custos consolidados do projeto
 custo_projeto_total = v_terr + v_obra
 
-# Exposição total acumulada de bolso (Entrada do terreno + parcelas do prazo selecionado)
-bolso_total_sac = capital_restante_terreno + total_p_sac
-bolso_total_price = capital_restante_terreno + total_p_price
+# Cálculo do Bolso Consolidado ajustado para o cenário de pendência de terreno
+bolso_total_sac = capital_ja_pago_terreno + aporte_obra_proprio + total_p_sac
+bolso_total_price = capital_ja_pago_terreno + aporte_obra_proprio + total_p_price
 
-# Lucros Líquidos Reais baseados no tempo total de carregamento da dívida
+# Lucros Líquidos Reais
 l_proprio = v_vgv - custo_projeto_total
 l_sac_real = v_vgv - quit_sac - bolso_total_sac
 l_price_real = v_vgv - quit_price - bolso_total_price
 
-# ROIs recalculados sobre o bolso exposto total consolidado (Travado em 49.02% para os 18 meses)
+# ROIs recalculados sobre a exposição real final
 roi_proprio = (l_proprio / custo_projeto_total) * 100
 roi_sac = (l_sac_real / bolso_total_sac) * 100
 roi_price = (l_price_real / bolso_total_price) * 100
@@ -121,7 +150,7 @@ moic_sac = (v_vgv - quit_sac) / bolso_total_sac
 moic_price = (v_vgv - quit_price) / bolso_total_price
 
 # =========================================================================
-# 4. INTERFACE GRÁFICA DO STREAMLIT
+# 5. INTERFACE GRÁFICA DO STREAMLIT
 # =========================================================================
 st.header(f"1. Simulação de Cenários de Capital ({m_venda} Meses)")
 
@@ -129,8 +158,8 @@ labels = [
     "Valor Geral de Vendas (VGV)", 
     "(-) Saldo de Dívida para Quitação Final", 
     "(-) Investimento Total Desembolsado (Bolso do Cliente)", 
-    "  • Capital de Entrada (Terreno - Fração de Capital Próprio)", 
-    "  • Custos de Parcelas Mensais Acumuladas no Período",
+    "  • Capital de Entrada Imobilizado (Fração Paga do Terreno)", 
+    "  • Custos de Parcelas + Aportes Complementares Acumulados",
     "(=) LUCRO LÍQUIDO REALIZADO", 
     "📊 ROI Real do Empreendedor", 
     "📈 Múltiplo de Capital Realizado (MOIC)"
@@ -147,7 +176,7 @@ with st.expander("▶️ Cenário A: Execução Pura com Recursos Próprios (Sem
 with st.expander("▶️ Cenário B: Alavancagem Inteligente via Sistema SAC"):
     val_sc = [
         fmt_moeda(v_vgv), fmt_moeda(quit_sac), fmt_moeda(bolso_total_sac),
-        fmt_moeda(capital_restante_terreno), fmt_moeda(total_p_sac), fmt_moeda(l_sac_real), 
+        fmt_moeda(capital_ja_pago_terreno), fmt_moeda(total_p_sac + aporte_obra_proprio), fmt_moeda(l_sac_real), 
         f"{roi_sac:.2f}%", f"{moic_sac:.2f}x"
     ]
     st.table(pd.DataFrame({"Diretriz de Análise": labels[:8], "Resultado": val_sc}))
@@ -155,13 +184,13 @@ with st.expander("▶️ Cenário B: Alavancagem Inteligente via Sistema SAC"):
 with st.expander("▶️ Cenário C: Alavancagem Inteligente via Sistema Price"):
     val_prc = [
         fmt_moeda(v_vgv), fmt_moeda(quit_price), fmt_moeda(bolso_total_price),
-        fmt_moeda(capital_restante_terreno), fmt_moeda(total_p_price), fmt_moeda(l_price_real), 
+        fmt_moeda(capital_ja_pago_terreno), fmt_moeda(total_p_price + aporte_obra_proprio), fmt_moeda(l_price_real), 
         f"{roi_price:.2f}%", f"{moic_price:.2f}x"
     ]
     st.table(pd.DataFrame({"Diretriz de Análise": labels[:8], "Resultado": val_prc}))
 
 # =========================================================================
-# 5. FLUXO DETALHADO DO CRONOGRAMA MES A MES
+# 6. FLUXO DETALHADO DO CRONOGRAMA MES A MES
 # =========================================================================
 st.header("2. Evolução Patrimonial e Cronograma Mensal")
 st.caption(f"Visão detalhada do fluxo acumulado para uma estratégia de saída programada em {m_venda} meses.")
