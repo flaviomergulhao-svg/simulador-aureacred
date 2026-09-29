@@ -15,7 +15,7 @@ def fmt_moeda(valor):
     return f"R$ {valor:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
 
 # =========================================================================
-# 1. PAINEL DE CONTROLE LATERAL (Controles dinâmicos ao vivo)
+# 1. PAINEL DE CONTROLE LATERAL
 # =========================================================================
 st.sidebar.header("⚙️ Premissas Operacionais")
 v_vgv = st.sidebar.number_input("Valor Geral de Vendas (VGV)", min_value=100000.0, value=3600000.0, step=100000.0, format="%.2f")
@@ -141,19 +141,19 @@ moic_sac = (v_vgv - quit_sac) / bolso_total_sac
 moic_price = (v_vgv - quit_price) / bolso_total_price
 
 # =========================================================================
-# 5. HIGHLIGHTS DA APRESENTAÇÃO (Cards principais no topo)
+# 5. HIGHLIGHTS DA APRESENTAÇÃO
 # =========================================================================
 st.markdown("---")
 c_met1, c_met2, c_met3 = st.columns(3)
 with c_met1:
-    st.metric(label="Lucro Cenário Sem Alavancagem", value=fmt_moeda(l_proprio), help="Execução 100% com recursos próprios.")
+    st.metric(label="Lucro Cenário Sem Alavancagem", value=fmt_moeda(l_proprio))
 with c_met2:
-    st.metric(label="Lucro Alavancagem (SAC)", value=fmt_moeda(l_sac_real), delta=f"Eficiência do Caixa: {roic_sac:.2f}%")
+    st.metric(label="Lucro Alavancagem (SAC)", value=fmt_moeda(l_sac_real), delta=f"Eficiência Caixa: {roic_sac:.2f}%")
 with c_met3:
-    st.metric(label="Lucro Alavancagem (Price)", value=fmt_moeda(l_price_real), delta=f"Eficiência do Caixa: {roic_price:.2f}%")
+    st.metric(label="Lucro Alavancagem (Price)", value=fmt_moeda(l_price_real), delta=f"Eficiência Caixa: {roic_price:.2f}%")
 
 # =========================================================================
-# 6. TESE CENTRAL DA REUNIÃO: CUSTO DE OPORTUNIDADE (VENDER VS. ALAVANCAR)
+# 6. TESE CENTRAL DA REUNIÃO: CUSTO DE OPORTUNIDADE
 # =========================================================================
 st.markdown("---")
 st.header("🎯 Custo de Oportunidade: Desmobilizar Lote vs. Alavancar Obra")
@@ -166,7 +166,7 @@ with col1:
     st.write(f"• **Dinheiro Novo do Bolso:** {fmt_moeda(0.0)}")
     st.write(f"• **Liquidez de Retorno (Mês {m_venda}):** {fmt_moeda(v_terr)}")
     st.write(f"• **Lucro Líquido Realizado:** {fmt_moeda(0.0)} *(Apenas recuperou o valor do lote)*")
-    st.error("❌ Você deixa 100% do lucro da incorporação e construção na mesa.")
+    st.error("❌ Você deixa 100% do lucro da incorporação na mesa.")
 
 with col2:
     st.subheader("🟢 Estratégia 2: Reter o Lote + Iniciar Alavancagem")
@@ -179,13 +179,11 @@ with col2:
 st.info(f"💡 **Tese de Investimento para o Cliente:** Ao invés de ficar travado com R$ 1.000.000,00 da venda simples, a **Alavancagem** permite injetar de forma parcelada {fmt_moeda(capital_novo_sac)} ao longo de {m_venda} meses. No final, o investidor **recupera o valor original do terreno e embolsa mais {fmt_moeda(l_sac_real)} de lucro líquido puro**, extraindo a máxima potência sobre cada real investido.")
 
 # =========================================================================
-# 7. MATRIZ COMPARATIVA GERAL (UNIFICADA LADO A LADO - CORREÇÃO CRÍTICA)
+# 7. MATRIZ COMPARATIVA GERAL (UNIFICADA LADO A LADO)
 # =========================================================================
 st.markdown("---")
 st.header("📊 Comparativo Detalhado de Estruturação de Capital")
-st.caption("Visão matricial consolidada para comparação direta de performance entre os cenários de capital.")
 
-# Criando a tabela unificada lado a lado para exibição imediata na tela
 diretrizes = [
     "Valor Geral de Vendas (VGV)", 
     "(-) Saldo de Dívida para Quitação Final", 
@@ -207,3 +205,12 @@ col_sem_alavancagem = [
 col_alavancagem_sac = [
     fmt_moeda(v_vgv), fmt_moeda(quit_sac), fmt_moeda(bolso_total_sac),
     fmt_moeda(capital_restante_terreno), fmt_moeda(capital_novo_sac), fmt_moeda(l_sac_real), 
+    f"{roi_sac:.2f}%", f"{roic_sac:.2f}%", f"{moic_sac:.2f}x"
+]
+
+col_alavancagem_price = [
+    fmt_moeda(v_vgv), fmt_moeda(quit_price), fmt_moeda(bolso_total_price),
+    fmt_moeda(capital_restante_terreno), fmt_moeda(capital_novo_price), fmt_moeda(l_price_real), 
+    f"{roi_price:.2f}%", f"{roic_price:.2f}%", f"{moic_price:.2f}x"
+]
+
