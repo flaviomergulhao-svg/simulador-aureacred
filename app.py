@@ -96,25 +96,29 @@ cronograma_final.append({
 })
 
 # =========================================================================
-# 3. CONCILIAÇÃO FINANCEIRA TRAVADA (MATEMÁTICA DA TELA)
+# 3. CONCILIAÇÃO FINANCEIRA CORRIGIDA (BASEADA NO DESEMBOLSO TOTAL DO BOLSO)
 # =========================================================================
 capital_restante_terreno = v_terr - (credito_bancario_total - v_obra)
 custo_projeto_total = v_terr + v_obra
 
-# Lucros Líquidos Reais baseados no VGV e nos fechamentos de saldo devedor
-l_proprio = v_vgv - custo_projeto_total
-l_sac_real = v_vgv - quit_sac - total_p_sac - capital_restante_terreno
-l_price_real = v_vgv - quit_price - total_p_price - capital_restante_terreno
+# Definição clara do bolso cheio exposto (Terreno próprio + parcelas acumuladas)
+bolso_total_sac = capital_restante_terreno + total_p_sac
+bolso_total_price = capital_restante_terreno + total_p_price
 
-# ROI Calculado exatamente sobre o Capital de Entrada do Terreno (Fechando em 85.27%)
+# Lucros Líquidos Reais
+l_proprio = v_vgv - custo_projeto_total
+l_sac_real = v_vgv - quit_sac - bolso_total_sac
+l_price_real = v_vgv - quit_price - bolso_total_price
+
+# CORREÇÃO CRÍTICA DO ROI: Dividindo o Lucro pelo DESEMBOLSO TOTAL (Exposição de Caixa Consolidada)
 roi_proprio = (l_proprio / custo_projeto_total) * 100
-roi_sac = (l_sac_real / capital_restante_terreno) * 100
-roi_price = (l_price_real / capital_restante_terreno) * 100
+roi_sac = (l_sac_real / bolso_total_sac) * 100
+roi_price = (l_price_real / bolso_total_price) * 100
 
 # MOIC baseado na exposição de bolso consolidada
 moic_proprio = v_vgv / custo_projeto_total
-moic_sac = (v_vgv - quit_sac) / (capital_restante_terreno + total_p_sac)
-moic_price = (v_vgv - quit_price) / (capital_restante_terreno + total_p_price)
+moic_sac = (v_vgv - quit_sac) / bolso_total_sac
+moic_price = (v_vgv - quit_price) / bolso_total_price
 
 # =========================================================================
 # 4. INTERFACE GRÁFICA DO STREAMLIT
@@ -142,7 +146,7 @@ with st.expander("▶️ Cenário A: Execução Pura com Recursos Próprios (Sem
 
 with st.expander("▶️ Cenário B: Alavancagem Inteligente via Sistema SAC"):
     val_sc = [
-        fmt_moeda(v_vgv), fmt_moeda(quit_sac), fmt_moeda(capital_restante_terreno + total_p_sac),
+        fmt_moeda(v_vgv), fmt_moeda(quit_sac), fmt_moeda(bolso_total_sac),
         fmt_moeda(capital_restante_terreno), fmt_moeda(total_p_sac), fmt_moeda(l_sac_real), 
         f"{roi_sac:.2f}%", f"{moic_sac:.2f}x"
     ]
@@ -150,7 +154,7 @@ with st.expander("▶️ Cenário B: Alavancagem Inteligente via Sistema SAC"):
 
 with st.expander("▶️ Cenário C: Alavancagem Inteligente via Sistema Price"):
     val_prc = [
-        fmt_moeda(v_vgv), fmt_moeda(quit_price), fmt_moeda(capital_restante_terreno + total_p_price),
+        fmt_moeda(v_vgv), fmt_moeda(quit_price), fmt_moeda(bolso_total_price),
         fmt_moeda(capital_restante_terreno), fmt_moeda(total_p_price), fmt_moeda(l_price_real), 
         f"{roi_price:.2f}%", f"{moic_price:.2f}x"
     ]
