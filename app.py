@@ -38,90 +38,107 @@ tranches = {0: 360000.0, 2: 360000.0, 4: 360000.0, 6: 360000.0, 8: 360000.0}
 credito_bancario_total = 1800000.0
 
 # =========================================================================
-# 2. MOTOR DE SIMULAÇÃO (SAC VS PRICE CONFORME SEU ALGORITMO)
+# 2. MOTOR DE SIMULAÇÃO REESTRUTURADO (SAC E PRICE CONCOMITANTES)
 # =========================================================================
-def rodar_motor(sistema='SAC'):
-    saldo_devedor = 0.0
-    total_parcelas = 0.0
-    ganho_cdi = 0.0
-    list_p = []
+s_sac = (credito_bancario_total / 6) + v_taoc
+s_pr = (credito_bancario_total / 6) + v_taoc
+
+total_p_sac, total_p_price = 0.0, 0.0
+total_aporte_obra = 0.0
+ganho_cdi_sac, ganho_cdi_price = 0.0, 0.0
+
+# Memória das parcelas para o custo de oportunidade
+list_p_sac = []
+list_p_price = []
+
+# Nova lista unificada que guardará o cronograma sem erro de Syntax
+cronograma_final = []
+
+for i in range(m_venda + 1):
+    ap_val = tranches[i] if i in tranches else 0.0
+    if i > 0:
+        s_sac += ap_val
+        s_pr += ap_val
+
+    p_sac_v, p_pr_v = 0.00, 0.00
     
-    linhas_tabela = []
-    
-    for mes in range(m_venda + 1):
-        ap_val = tranches[mes] if mes in tranches else 0.0
+    if i > 0:
+        # SAC
+        j_sac_m = s_sac * tx_juros
+        amort_sac_m = s_sac / (prazo_contrato - i + 1)
+        p_sac_v = amort_sac_m + j_sac_m
+        s_sac -= amort_sac_m
+
+        # PRICE
+        j_pr_m = s_pr * tx_juros
+        fator_pmt = (tx_juros * ((1 + tx_juros)**(prazo_contrato - i + 1))) / (((1 + tx_juros)**(prazo_contrato - i + 1)) - 1)
+        p_pr_v = s_pr * fator_pmt
+        s_pr -= (p_pr_v - j_pr_m)
+
+        # Acumuladores
+        total_p_sac += p_sac_v
+        total_p_price += p_pr_v
+        list_p_sac.append(p_sac_v)
+        list_p_price.append(p_pr_v)
+        total_aporte_obra += ap_val
         
-        if mes in tranches:
-            saldo_devedor += tranches[mes]
-        if mes == 0:
-            saldo_devedor += v_taoc
-            
-        if mes == m_venda:
-            linhas_tabela.append({
-                "Período": f"Mês {mes}",
-                "Aporte Obra": fmt_moeda(0.0),
-                "Parcela": fmt_moeda(0.0),
-                "Saldo Devedor": fmt_moeda(saldo_devedor)
-            })
-            break
-            
-        p_mes = 0.0
-        if saldo_devedor > 0:
-            j_mes = saldo_devedor * tx_juros
-            prazo_restante = prazo_contrato - mes
-            
-            if sistema == 'SAC':
-                amort_mes = saldo_devedor / prazo_restante
-                p_mes = amort_mes + j_mes
-            else:
-                p_mes = saldo_devedor * (tx_juros * (1+tx_juros)**prazo_restante) / ((1+tx_juros)**prazo_restante - 1)
-                amort_mes = p_mes - j_mes
-                
-            total_parcelas += p_mes
-            list_p.append(p_mes)
-            saldo_devedor -= amort_mes
-            
-        # Cálculo de Caixa Preservado Mês a Mês
-        caixa_pres = (v_obra / m_venda) * mes - total_parcelas + (credito_bancario_total - v_obra)
+        # Juros do Caixa Livre (CDI)
+        caixa_pres_sac = (v_obra / m_venda) * i - sum(list_p_sac) + (credito_bancario_total - v_obra)
+        caixa_pres_prc = (v_obra / m_venda) * i - sum(list_p_price) + (credito_bancario_total - v_obra)
         if status_terreno == "Não":
-            caixa_pres += (v_terr - saldo_devedor_terreno)
-        if caixa_pres > 0:
-            ganho_cdi += caixa_pres * tx_cdi
+            caixa_pres_sac += (v_terr - saldo_devedor_terreno)
+            caixa_pres_prc += (v_terr - saldo_devedor_terreno)
+            
+        if caixa_pres_sac > 0: ganho_cdi_sac += caixa_pres_sac * tx_cdi
+        if caixa_pres_prc > 0: ganho_cdi_price += caixa_pres_prc * tx_cdi
+    else:
+        total_aporte_obra += (credito_bancario_total / 6)
 
-        linhas_tabela.append({
-            "Período": f"Mês {mes}",
-            "Aporte Obra": fmt_moeda(ap_val) if mes in tranches else fmt_moeda(0.0),
-            "Parcela": fmt_moeda(p_mes),
-            "Saldo Devedor": fmt_moeda(saldo_devedor)
-        })
-        
-    return total_parcelas, saldo_devedor, ganho_cdi, linhas_tabela
+    # Injeção direta linha por linha com strings formatadas como moeda
+    cronograma_final.append({
+        "Período": f"Mês {i}",
+        "Aporte Obra": fmt_moeda(ap_val) if i > 0 else fmt_moeda(credito_bancario_total / 6),
+        "Parcela SAC": fmt_moeda(p_sac_v),
+        "Saldo SAC": fmt_moeda(s_sac) if i < m_venda else fmt_moeda(s_sac + amort_sac_m),
+        "Parcela PRICE": fmt_moeda(p_pr_v),
+        "Saldo PRICE": fmt_moeda(s_pr) if i < m_venda else fmt_moeda(s_pr + (p_pr_v - j_pr_m))
+    })
 
-# Execução limpa dos dois cenários
-parc_sac, quit_sac, cdi_sac, t_sac = rodar_motor('SAC')
-parc_prc, quit_prc, cdi_prc, t_prc = rodar_motor('Price')
+# Captura exata do saldo de quitação antes de quebrar o loop no mês 18
+quit_sac = s_sac + amort_sac_m
+quit_price = s_pr + (p_pr_v - j_pr_m)
+
+# Injeção segura da linha de totalizadores no rodapé da tabela
+cronograma_final.append({
+    "Período": "TOTAL",
+    "Aporte Obra": fmt_moeda(total_aporte_obra),
+    "Parcela SAC": fmt_moeda(total_p_sac),
+    "Saldo SAC": "",
+    "Parcela PRICE": fmt_moeda(total_p_price),
+    "Saldo PRICE": ""
+})
 
 # Conciliação das premissas de bolso corporativo
 capital_ja_pago_terreno = v_terr - saldo_devedor_terreno
 sobra_caixa_giro = credito_bancario_total - (saldo_devedor_terreno + v_obra)
 
 invest_bolso_proprio = v_terr + v_obra
-invest_bolso_sac = capital_ja_pago_terreno + parc_sac - sobra_caixa_giro if sobra_caixa_giro > 0 else capital_ja_pago_terreno + parc_sac
-invest_bolso_price = capital_ja_pago_terreno + parc_prc - sobra_caixa_giro if sobra_caixa_giro > 0 else capital_ja_pago_terreno + parc_prc
+invest_bolso_sac = capital_ja_pago_terreno + total_p_sac - sobra_caixa_giro if sobra_caixa_giro > 0 else capital_ja_pago_terreno + total_p_sac
+invest_bolso_price = capital_ja_pago_terreno + total_p_price - sobra_caixa_giro if sobra_caixa_giro > 0 else capital_ja_pago_terreno + total_p_price
 
 l_proprio = v_vgv - invest_bolso_proprio
 l_sac_tijolo = (v_vgv - quit_sac) - invest_bolso_sac
-l_price_tijolo = (v_vgv - quit_prc) - invest_bolso_price
+l_price_tijolo = (v_vgv - quit_price) - invest_bolso_price
 
-l_sac_total = l_sac_tijolo + cdi_sac
-l_price_total = l_price_tijolo + cdi_prc
+l_sac_total = l_sac_tijolo + ganho_cdi_sac
+l_price_total = l_price_tijolo + ganho_cdi_price
 
 moic_proprio = v_vgv / invest_bolso_proprio
-moic_sac = (v_vgv - quit_sac + cdi_sac) / invest_bolso_sac if invest_bolso_sac > 0 else 0.0
-moic_price = (v_vgv - quit_prc + cdi_prc) / invest_bolso_price if invest_bolso_price > 0 else 0.0
+moic_sac = (v_vgv - quit_sac + ganho_cdi_sac) / invest_bolso_sac if invest_bolso_sac > 0 else 0.0
+moic_price = (v_vgv - quit_price + ganho_cdi_price) / invest_bolso_price if invest_bolso_price > 0 else 0.0
 
 # =========================================================================
-# 3. INTERFACE GRÁFICA CONTÍNUA (SANFONAS)
+# 3. INTERFACE DE EXPANSORES COMPLETA (VISÃO CONTÍNUA)
 # =========================================================================
 st.header("1. Simulação de Cenários de Capital")
 
@@ -147,48 +164,22 @@ with st.expander("▶️ Cenário A: Execução Pura com Recursos Próprios (Sem
 with st.expander("▶️ Cenário B: Alavancagem Inteligente via Sistema SAC (Seu Modelo)"):
     val_sc = [
         fmt_moeda(v_vgv), fmt_moeda(credito_bancario_total), fmt_moeda(max(0.0, sobra_caixa_giro)), fmt_moeda(quit_sac), fmt_moeda(v_vgv - quit_sac), fmt_moeda(invest_bolso_sac),
-        fmt_moeda(capital_ja_pago_terreno), fmt_moeda(parc_sac), fmt_moeda(l_sac_tijolo), f"{(l_sac_tijolo/invest_bolso_sac)*100:.2f}%" if invest_bolso_sac>0 else "0.00%", f"{((l_sac_tijolo/invest_bolso_sac)*100)/m_venda:.2f}%/mês" if invest_bolso_sac>0 else "0.00%/mês",
-        fmt_moeda(cdi_sac), f"{(cdi_sac/invest_bolso_sac)*100:.2f}%" if invest_bolso_sac>0 else "0.00%", fmt_moeda(l_sac_total), f"{moic_sac:.2f}x", f"{(l_sac_total/invest_bolso_sac*100)/m_venda:.2f}%/mês" if invest_bolso_sac>0 else "0.00%/mês"
+        fmt_moeda(capital_ja_pago_terreno), fmt_moeda(total_p_sac), fmt_moeda(l_sac_tijolo), f"{(l_sac_tijolo/invest_bolso_sac)*100:.2f}%" if invest_bolso_sac>0 else "0.00%", f"{((l_sac_tijolo/invest_bolso_sac)*100)/m_venda:.2f}%/mês" if invest_bolso_sac>0 else "0.00%/mês",
+        fmt_moeda(ganho_cdi_sac), f"{(ganho_cdi_sac/invest_bolso_sac)*100:.2f}%" if invest_bolso_sac>0 else "0.00%", fmt_moeda(l_sac_total), f"{moic_sac:.2f}x", f"{(l_sac_total/invest_bolso_sac*100)/m_venda:.2f}%/mês" if invest_bolso_sac>0 else "0.00%/mês"
     ]
     st.table(pd.DataFrame({"Diretriz de Análise": labels, "Resultado": val_sc}))
 
 with st.expander("▶️ Cenário C: Alavancagem Corporativa Avançada via Sistema PRICE (Seu Modelo)"):
     val_pc = [
-        fmt_moeda(v_vgv), fmt_moeda(credito_bancario_total), fmt_moeda(max(0.0, sobra_caixa_giro)), fmt_moeda(quit_prc), fmt_moeda(v_vgv - quit_prc), fmt_moeda(invest_bolso_price),
-        fmt_moeda(capital_ja_pago_terreno), fmt_moeda(parc_prc), fmt_moeda(l_price_tijolo), f"{(l_price_tijolo/invest_bolso_price)*100:.2f}%" if invest_bolso_price>0 else "0.00%", f"{((l_price_tijolo/invest_bolso_price)*100)/m_venda:.2f}%/mês" if invest_bolso_price>0 else "0.00%/mês",
-        fmt_moeda(cdi_prc), f"{(cdi_prc/invest_bolso_price)*100:.2f}%" if invest_bolso_price>0 else "0.00%", fmt_moeda(l_price_total), f"{moic_price:.2f}x", f"{(l_price_total/invest_bolso_price*100)/m_venda:.2f}%/mês" if invest_bolso_price>0 else "0.00%/mês"
+        fmt_moeda(v_vgv), fmt_moeda(credito_bancario_total), fmt_moeda(max(0.0, sobra_caixa_giro)), fmt_moeda(quit_price), fmt_moeda(v_vgv - quit_price), fmt_moeda(invest_bolso_price),
+        fmt_moeda(capital_ja_pago_terreno), fmt_moeda(total_p_price), fmt_moeda(l_price_tijolo), f"{(l_price_tijolo/invest_bolso_price)*100:.2f}%" if invest_bolso_price>0 else "0.00%", f"{((l_price_tijolo/invest_bolso_price)*100)/m_venda:.2f}%/mês" if invest_bolso_price>0 else "0.00%/mês",
+        fmt_moeda(ganho_cdi_price), f"{(ganho_cdi_price/invest_bolso_price)*100:.2f}%" if invest_bolso_price>0 else "0.00%", fmt_moeda(l_price_total), f"{moic_price:.2f}x", f"{(l_price_total/invest_bolso_price*100)/m_venda:.2f}%/mês" if invest_bolso_price>0 else "0.00%/mês"
     ]
     st.table(pd.DataFrame({"Diretriz de Análise": labels, "Resultado": val_pc}))
 
-# =========================================================================
-# 4. CRONOGRAMA UNIFICADO POR CONCATENAÇÃO LINEAR (ABSOLUTAMENTE BLINDADO)
-# =========================================================================
 st.markdown("---")
 st.header("2. Evolução Cronológica Mensal Detalhada")
 
-# Criação manual das colunas com indexação segura e direta
-c_m, c_ap, c_p_s, c_s_s, c_p_p, c_s_p = [], [], [], [], [], []
-
-for s_row, p_row in zip(t_sac, t_prc):
-    c_m.append(s_row["Período"])
-    c_ap.append(s_row["Aporte Obra"])
-    c_p_s.append(s_row["Parcela"])
-    c_s_s.append(s_row["Saldo Devedor"])
-    c_p_p.append(p_row["Parcela"])
-    c_s_p.append(p_row["Saldo Devedor"])
-
-# Injeção manual da linha final de TOTAL no rodapé das listas
-c_m.append("TOTAL")
-c_ap.append(fmt_moeda(1800000.0)) # 5 tranches de 360k
-c_p_s.append(fmt_moeda(parc_sac))
-c_s_s.append("")
-c_p_p.append(fmt_moeda(parc_prc))
-c_s_p.append("")
-
-# Renderização estável por colunas estruturadas
-df_cronograma = pd.DataFrame({
-    "Período": c_m,
-    "Aporte Obra": c_ap,
-    "Parcela SAC": c_p_s,
-    "Saldo SAC": c_s_s,
-    "Parcela PRICE": c_p_p,
+# Renderização direta da lista de dicionários sem chance de quebra estrutural
+df_cronograma = pd.DataFrame(cronograma_final)
+st.table(df_cronograma)
