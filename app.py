@@ -49,8 +49,9 @@ tranches = {0: valor_tranche_dinamica, 2: valor_tranche_dinamica, 4: valor_tranc
 st.sidebar.info(f"💳 **Crédito Máximo Configurado:** {fmt_moeda(credito_bancario_total)}")
 
 # =========================================================================
-# 3. MOTOR DE SIMULAÇÃO REESTRUTURADO
+# 3. MOTOR DE SIMULAÇÃO REESTRUTURADO (PREVENÇÃO DE ERROS DE TIPO TRAVADA)
 # =========================================================================
+# CORREÇÃO CRÍTICA: Extraindo o valor numérico da chave 0 para evitar conflitos de dicionário
 s_sac = tranches[0] + v_taoc
 s_pr = tranches[0] + v_taoc
 
@@ -171,7 +172,7 @@ with col1:
 with col2:
     st.subheader("🟢 Estratégia 2: Reter o Lote + Iniciar Alavancagem")
     st.write(f"• **Decisão Comercial:** O banco cobre a obra. O investidor carrega apenas o fluxo de parcelas.")
-    st.write(f"• **Dinheiro Novo em Movimento (SAC):** {fmt_moeda(capital_novo_sac)}")
+    st.write(f"• **Dinheiro Novo em Movimento (Alavancagem SAC):** {fmt_moeda(capital_novo_sac)}")
     st.write(f"• **Retorno pós-Quitação do Banco (SAC):** {fmt_moeda(v_vgv - quit_sac)}")
     st.write(f"• **Lucro Real Gerado no Período:** {fmt_moeda(l_sac_real)}")
     st.success(f"🏆 Lucro Realizado com Eficiência Financeira de **{roic_sac:.2f}%** sobre o dinheiro novo.")
@@ -179,7 +180,7 @@ with col2:
 st.info(f"💡 **Tese de Investimento para o Cliente:** Ao invés de ficar travado com R$ 1.000.000,00 da venda simples, a **Alavancagem** permite injetar de forma parcelada {fmt_moeda(capital_novo_sac)} ao longo de {m_venda} meses. No final, o investidor **recupera o valor original do terreno e embolsa mais {fmt_moeda(l_sac_real)} de lucro líquido puro**, extraindo a máxima potência sobre cada real investido.")
 
 # =========================================================================
-# 7. MATRIZ COMPARATIVA GERAL DETALHADA (CORREÇÃO DE FECHAMENTO CONCEITUAL)
+# 7. MATRIZ COMPARATIVA GERAL DETALHADA
 # =========================================================================
 st.markdown("---")
 st.header("📊 Comparativo Detalhado de Estruturação de Capital")
@@ -189,7 +190,7 @@ diretrizes_completas = [
     "Valor Geral de Vendas (VGV)",
     "(-) Crédito Estruturado Contratado (5 Tranches)",
     "(-) Saldo Injetado como Capital de Giro",
-    "(-) Dívida de Quitação (Mês 18)",
+    "(-) Dívida de Quitação (Mês de Saída)",
     "(=) Receita Líquida pós-Quitação",
     "(-) Investimento Líquido Desembolsado do Bolso",
     "  • Capital de Terreno (Fração Própria Exposta)",
@@ -218,6 +219,3 @@ col_sem_alavancagem = [
 col_alavancagem_sac = [
     fmt_moeda(v_vgv),
     fmt_moeda(credito_bancario_total),
-    fmt_moeda(max(0.0, credito_bancario_total - v_obra)),
-    fmt_moeda(quit_sac),
-    fmt_moeda(v_vgv - quit_sac),
