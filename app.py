@@ -40,26 +40,22 @@ credito_bancario_total = 1800000.0
 # =========================================================================
 # 2. MOTOR DE SIMULAÇÃO REESTRUTURADO E CORRIGIDO
 # =========================================================================
-# O saldo inicial no Mês 0 começa com a primeira tranche (liberada na largada) + TAC embutida
 s_sac = tranches[0] + v_taoc
 s_pr = tranches[0] + v_taoc
 
 total_p_sac, total_p_price = 0.0, 0.0
-total_aporte_obra = 0.0
-ganho_cdi_sac, ganho_cdi_price = 0.0, 0.0
+total_amort_sac, total_amort_price = 0.0, 0.0
+total_juros_sac, total_juros_price = 0.0, 0.0
+total_aporte_obra = tranches[0]
 
-list_p_sac = []
-list_p_price = []
 cronograma_final = []
-
-# Amortização linear fixa do sistema SAC sobre o contrato total estruturado
 amort_sac_fixa = (credito_bancario_total + v_taoc) / prazo_contrato
 
 for i in range(m_venda + 1):
-    # Se houver nova tranche no mês (Mês 2, 4, 6, 8), adiciona ao saldo ANTES de rodar os juros
     if i > 0 and i in tranches:
         s_sac += tranches[i]
         s_pr += tranches[i]
+        total_aporte_obra += tranches[i]
 
     p_sac_v, p_pr_v = 0.00, 0.00
     
@@ -67,45 +63,34 @@ for i in range(m_venda + 1):
         # --- SISTEMA SAC ---
         j_sac_m = s_sac * tx_juros
         p_sac_v = amort_sac_fixa + j_sac_m
-        s_sac -= amort_sac_fixa  # O saldo devedor cai de forma constante
+        s_sac -= amort_sac_fixa
+        
+        total_p_sac += p_sac_v
+        total_amort_sac += amort_sac_fixa
+        total_juros_sac += j_sac_m
 
         # --- SISTEMA PRICE ---
         j_pr_m = s_pr * tx_juros
-        # Fator calculado sobre o prazo original para manter a consistência metodológica do plano comercial
         fator_pmt = (tx_juros * ((1 + tx_juros)**prazo_contrato)) / (((1 + tx_juros)**prazo_contrato) - 1)
         p_pr_v = s_pr * fator_pmt
         amort_pr_m = p_pr_v - j_pr_m
-        s_pr -= amort_pr_m  # O saldo devedor cai conforme a folha de amortização Price
-
-        # Acumuladores e Memória
-        total_p_sac += p_sac_v
-        total_p_price += p_pr_v
-        list_p_sac.append(p_sac_v)
-        list_p_price.append(p_pr_v)
+        s_pr -= amort_pr_m
         
-        # Juros do Caixa Livre (CDI)
-        caixa_pres_sac = (v_obra / m_venda) * i - sum(list_p_sac) + (credito_bancario_total - v_obra)
-        caixa_pres_prc = (v_obra / m_venda) * i - sum(list_p_price) + (credito_bancario_total - v_obra)
-        if status_terreno == "Não":
-            caixa_pres_sac += (v_terr - saldo_devedor_terreno)
-            caixa_pres_prc += (v_terr - saldo_devedor_terreno)
-            
-        if caixa_pres_sac > 0: ganho_cdi_sac += caixa_pres_sac * tx_cdi
-        if caixa_pres_prc > 0: ganho_cdi_price += caixa_pres_prc * tx_cdi
+        total_p_price += p_pr_v
+        total_amort_price += amort_pr_m
+        total_juros_price += j_pr_m
 
-    ap_val = tranches[i] if i in tranches else 0.0
-    total_aporte_obra += ap_val
+    ap_val = tranches[i] if (i in tranches and i > 0) else 0.0
 
     cronograma_final.append({
         "Período": f"Mês {i}",
-        "Aporte Obra": fmt_moeda(ap_val),
+        "Aporte Obra": fmt_moeda(tranches[0]) if i == 0 else fmt_moeda(ap_val),
         "Parcela SAC": fmt_moeda(p_sac_v),
         "Saldo SAC": fmt_moeda(max(0.0, s_sac)),
         "Parcela PRICE": fmt_moeda(p_pr_v),
         "Saldo PRICE": fmt_moeda(max(0.0, s_pr))
     })
 
-# O valor real de saída (quitação) no 18º mês é o saldo devedor residual exato
 quit_sac = s_sac
 quit_price = s_pr
 
@@ -119,88 +104,66 @@ cronograma_final.append({
 })
 
 # =========================================================================
-# 3. CONCILIAÇÃO DE CAIXA, LUCRO E ROI
+# 3. CONCILIAÇÃO REALISTA DE BOLSO (CÁLCULO RIGOROSO DO ROI)
 # =========================================================================
-capital_ja_pago_terreno = v_terr - saldo_devedor_terreno
-sobra_caixa_giro = credito_bancario_total - (saldo_devedor_terreno + v_obra)
+# O capital próprio que REALMENTE sai do bolso do cliente durante a jornada
+capital_terreno_proprio = v_terr - saldo_devedor_terreno
+aporte_obra_proprio = max(0.0, v_obra - credito_bancario_total)
 
+# O bolso total engloba o que ele gastou de obra própria + o custo total das parcelas pagas no período
 invest_bolso_proprio = v_terr + v_obra
-invest_bolso_sac = capital_ja_pago_terreno + total_p_sac - (sobra_caixa_giro if sobra_caixa_giro > 0 else 0.0)
-invest_bolso_price = capital_ja_pago_terreno + total_p_price - (sobra_caixa_giro if sobra_caixa_giro > 0 else 0.0)
+invest_bolso_sac = capital_terreno_proprio + aporte_obra_proprio + total_p_sac
+invest_bolso_price = capital_terreno_proprio + aporte_obra_proprio + total_p_price
 
+# Lucro real desconta tudo o que saiu do bolso e o cheque de quitação final do VGV
 l_proprio = v_vgv - invest_bolso_proprio
-l_sac_tijolo = (v_vgv - quit_sac) - invest_bolso_sac
-l_price_tijolo = (v_vgv - quit_price) - invest_bolso_price
+l_sac_real = v_vgv - quit_sac - invest_bolso_sac
+l_price_real = v_vgv - quit_price - invest_bolso_price
 
-l_sac_total = l_sac_tijolo + ganho_cdi_sac
-l_price_total = l_price_tijolo + ganho_cdi_price
-
+# Multiplicadores (MOIC)
 moic_proprio = v_vgv / invest_bolso_proprio
-moic_sac = (v_vgv - quit_sac + ganho_cdi_sac) / invest_bolso_sac if invest_bolso_sac > 0 else 0.0
-moic_price = (v_vgv - quit_price + ganho_cdi_price) / invest_bolso_price if invest_bolso_price > 0 else 0.0
+moic_sac = (v_vgv - quit_sac) / invest_bolso_sac if invest_bolso_sac > 0 else 0.0
+moic_price = (v_vgv - quit_price) / invest_bolso_price if invest_bolso_price > 0 else 0.0
 
 # =========================================================================
 # 4. INTERFACE GRÁFICA DO STREAMLIT
 # =========================================================================
-st.header("1. Simulação de Cenários de Capital")
+st.header("1. Simulação de Cenários de Capital (Métricas Corrigidas)")
 
 labels = [
     "Valor Geral de Vendas (VGV)", 
-    "(-) Dívida de Quitação de Saída (Mês 18)", 
-    "(-) Investimento Líquido Injetado do Bolso Próprio", 
-    "  • Capital do Terreno já Imobilizado", 
-    "  • Desembolso de Parcelas Acumuladas",
-    "(=) LUCRO OPERACIONAL LÍQUIDO", 
-    "  • ROI Real do Empreendedor (s/ Capital Próprio)", 
-    "  • Múltiplo de Capital Realizado (MOIC)",
-    "(+) RENDIMENTO DO CAIXA PRESERVADO (CDI)", 
-    "🔥 BENEFÍCIO FINANCEIRO COMBINADO TOTAL"
+    "(-) Saldo de Dívida para Quitação (Mês 18)", 
+    "(-) Investimento Total Desembolsado (Bolso do Cliente)", 
+    "  • Capital do Terreno (Aporte Inicial)", 
+    "  • Custos de Obra Própria + Parcelas Acumuladas",
+    "(=) LUCRO LÍQUIDO REALIZADO", 
+    "📊 ROI Real do Empreendedor", 
+    "📈 Múltiplo de Capital Realizado (MOIC)"
 ]
 
 with st.expander("▶️ Cenário A: Execução Pura com Recursos Próprios (Sem Alavancagem)"):
     val_pr = [
-        fmt_moeda(v_vgv), 
-        fmt_moeda(0.0), 
-        fmt_moeda(invest_bolso_proprio),
-        fmt_moeda(v_terr), 
-        fmt_moeda(v_obra), 
-        fmt_moeda(l_proprio), 
-        f"{(l_proprio / invest_bolso_proprio) * 100:.2f}%",
-        f"{moic_proprio:.2f}x", 
-        fmt_moeda(0.0), 
-        fmt_moeda(l_proprio)
+        fmt_moeda(v_vgv), fmt_moeda(0.0), fmt_moeda(invest_bolso_proprio),
+        fmt_moeda(v_terr), fmt_moeda(v_obra), fmt_moeda(l_proprio), 
+        f"{(l_proprio / invest_bolso_proprio) * 100:.2f}%", f"{moic_proprio:.2f}x"
     ]
-    st.table(pd.DataFrame({"Diretriz de Análise": labels, "Resultado": val_pr}))
+    st.table(pd.DataFrame({"Diretriz de Análise": labels[:8], "Resultado": val_pr}))
 
-with st.expander("▶️ Cenário B: Alavancagem Inteligente via Sistema SAC (Menor Saldo de Saída)"):
+with st.expander("▶️ Cenário B: Alavancagem Inteligente via Sistema SAC"):
     val_sc = [
-        fmt_moeda(v_vgv), 
-        fmt_moeda(quit_sac), 
-        fmt_moeda(invest_bolso_sac),
-        fmt_moeda(capital_ja_pago_terreno), 
-        fmt_moeda(total_p_sac), 
-        fmt_moeda(l_sac_tijolo), 
-        f"{(l_sac_tijolo / invest_bolso_sac) * 100:.2f}%",
-        f"{moic_sac:.2f}x", 
-        fmt_moeda(ganho_cdi_sac), 
-        fmt_moeda(l_sac_total)
+        fmt_moeda(v_vgv), fmt_moeda(quit_sac), fmt_moeda(invest_bolso_sac),
+        fmt_moeda(capital_terreno_proprio), fmt_moeda(aporte_obra_proprio + total_p_sac), fmt_moeda(l_sac_real), 
+        f"{(l_sac_real / invest_bolso_sac) * 100:.2f}%", f"{moic_sac:.2f}x"
     ]
-    st.table(pd.DataFrame({"Diretriz de Análise": labels, "Resultado": val_sc}))
+    st.table(pd.DataFrame({"Diretriz de Análise": labels[:8], "Resultado": val_sc}))
 
-with st.expander("▶️ Cenário C: Alavancagem Inteligente via Sistema Price (Parcelas Iniciais Leves)"):
+with st.expander("▶️ Cenário C: Alavancagem Inteligente via Sistema Price"):
     val_prc = [
-        fmt_moeda(v_vgv), 
-        fmt_moeda(quit_price), 
-        fmt_moeda(invest_bolso_price),
-        fmt_moeda(capital_ja_pago_terreno), 
-        fmt_moeda(total_p_price), 
-        fmt_moeda(l_price_tijolo), 
-        f"{(l_price_tijolo / invest_bolso_price) * 100:.2f}%",
-        f"{moic_price:.2f}x", 
-        fmt_moeda(ganho_cdi_price), 
-        fmt_moeda(l_price_total)
+        fmt_moeda(v_vgv), fmt_moeda(quit_price), fmt_moeda(invest_bolso_price),
+        fmt_moeda(capital_terreno_proprio), fmt_moeda(aporte_obra_proprio + total_p_price), fmt_moeda(l_price_real), 
+        f"{(l_price_real / invest_bolso_price) * 100:.2f}%", f"{moic_price:.2f}x"
     ]
-    st.table(pd.DataFrame({"Diretriz de Análise": labels, "Resultado": val_prc}))
+    st.table(pd.DataFrame({"Diretriz de Análise": labels[:8], "Resultado": val_prc}))
 
 # =========================================================================
 # 5. FLUXO DETALHADO DO CRONOGRAMA MES A MES
