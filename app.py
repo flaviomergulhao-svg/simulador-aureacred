@@ -3,7 +3,6 @@ import pandas as pd
 
 st.set_page_config(layout="wide", page_title="Áurea Cred - Intelligence", page_icon="🛡️")
 
-# Cabeçalho Executivo de Alto Padrão
 st.title("🛡️ Painel de Inteligência Financeira & Eficiência de Capital")
 st.subheader("Análise Estratégica para Incorporação de Alto Padrão")
 st.caption("Apresentação Dinâmica de Cenários de Alavancagem Patrimonial")
@@ -176,31 +175,35 @@ with col2:
 st.info(f"💡 **Tese de Investimento para o Cliente:** Ao invés de ficar travado com R$ 1.000.000,00 da venda simples, a **Alavancagem** permite injetar de forma parcelada {fmt_moeda(capital_novo_sac)} ao longo de {m_venda} meses. No final, o investidor **recupera o valor original do terreno e embolsa mais {fmt_moeda(l_sac_real)} de lucro líquido puro**, extraindo a máxima potência sobre cada real investido.")
 
 # =========================================================================
-# 7. MATRIZ COMPARATIVA MASTER (TABELA TOTALMENTE RECONSTRUÍDA E GARANTIDA)
+# 7. MATRIZ DETALHADA - SISTEMA LINEAR ANTI-SYNTAXERROR (BLINDAGEM TOTAL)
 # =========================================================================
 st.markdown("---")
 st.header("📊 Comparativo Detalhado de Estruturação de Capital")
 st.caption("Visão matricial aberta contendo a origem de cada indicador físico, bancário e de bolso.")
 
-# Nova estrutura de dicionário unificado: sem comandos de adição por linhas, eliminando chances de erro no deploy
-dados_tabela_master = {
-    "Diretriz de Análise": [
-        "Valor Geral de Vendas (VGV)",
-        "(-) Crédito Estruturado Contratado (5 Tranches)",
-        "(-) Saldo Injetado como Capital de Giro",
-        "(-) Dívida de Quitação (Mês de Saída)",
-        "(=) Receita Líquida pós-Quitação",
-        "(-) Investimento Líquido Desembolsado do Bolso",
-        "  • Capital de Terreno (Fração Própria Exposta)",
-        "  • Desembolso de Parcelas Acumuladas (Obra)",
-        "(=) LUCRO OPERACIONAL LÍQUIDO REALIZADO",
-        "📊 ROI Tradicional (Sobre o Bolso Total)",
-        "🚀 Retorno sobre o Capital Novo (Eficiência do Fluxo)",
-        "📈 Múltiplo de Capital Realizado (MOIC)"
-    ],
-    "Sem Alavancagem (À Vista)": [
-        fmt_moeda(v_vgv), fmt_moeda(0.0), fmt_moeda(0.0), fmt_moeda(0.0), fmt_moeda(v_vgv),
-        fmt_moeda(custo_projeto_total), fmt_moeda(v_terr), fmt_moeda(v_obra), fmt_moeda(l_proprio),
-        f"{roi_proprio:.2f}%", f"{roic_proprio:.2f}%", f"{moic_proprio:.2f}x"
-    ],
-    "Alavancagem (Sistema SAC)": [
+# Criação das séries isoladas em dicionários primitivos, eliminando blocos de colchetes mistos com strings
+v_diretrizes = [
+    "Valor Geral de Vendas (VGV)",
+    "(-) Credito Estruturado Contratado (5 Tranches)",
+    "(-) Saldo Injetado como Capital de Giro",
+    "(-) Divida de Quitacao (Mes de Saida)",
+    "(=) Receita Liquida pos-Quitacao",
+    "(-) Investimento Liquido Desembolsado do Bolso",
+    "  * Capital de Terreno (Fracao Propria Exposta)",
+    "  * Desembolso de Parcelas Acumuladas (Obra)",
+    "(=) LUCRO OPERACIONAL LIQUIDO REALIZADO",
+    "ROI Tradicional (Sobre o Bolso Total)",
+    "Retorno sobre o Capital Novo (Eficiencia)",
+    "Multiplo de Capital Realizado (MOIC)"
+]
+
+v_vista = [
+    fmt_moeda(v_vgv), fmt_moeda(0.0), fmt_moeda(0.0), fmt_moeda(0.0), fmt_moeda(v_vgv),
+    fmt_moeda(custo_projeto_total), fmt_moeda(v_terr), fmt_moeda(v_obra), fmt_moeda(l_proprio),
+    f"{roi_proprio:.2f}%", f"{roic_proprio:.2f}%", f"{moic_proprio:.2f}x"
+]
+
+v_sac = [
+    fmt_moeda(v_vgv), fmt_moeda(credito_bancario_total), fmt_moeda(max(0.0, credito_bancario_total - v_obra)),
+    fmt_moeda(quit_sac), fmt_moeda(v_vgv - quit_sac), fmt_moeda(bolso_total_sac),
+    fmt_moeda(capital_restante_terreno), fmt_moeda(capital_novo_sac), fmt_moeda(l_sac_real),
