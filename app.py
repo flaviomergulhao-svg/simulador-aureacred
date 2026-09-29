@@ -3,6 +3,7 @@ import pandas as pd
 
 st.set_page_config(layout="wide", page_title="Áurea Cred - Intelligence", page_icon="🛡️")
 
+# Cabeçalho Executivo de Alto Padrão
 st.title("🛡️ Painel de Inteligência Financeira & Eficiência de Capital")
 st.subheader("Análise Estratégica para Incorporação de Alto Padrão")
 st.caption("Apresentação Dinâmica de Cenários de Alavancagem Patrimonial")
@@ -160,7 +161,7 @@ with col1:
         st.write(f"• **Decisão Comercial:** Liquidar o patrimônio imobilizado bruto sem agregar valor construtivo.")
         st.write(f"• **Dinheiro Novo do Bolso:** {fmt_moeda(0.0)}")
         st.write(f"• **Liquidez de Retorno (Mês {m_venda}):** {fmt_moeda(v_terr)}")
-        st.write(f"• **Lucro Líquido Realizado:** {fmt_moeda(0.0)} *(Apenas recuperou o valor do lote)*")
+        st.write(f"• **Lucro Líquido Realizado:** {fmt_moeda(0.0)}")
         st.error("❌ Você deixa 100% do lucro da incorporação na mesa.")
 
 with col2:
@@ -175,13 +176,13 @@ with col2:
 st.info(f"💡 **Tese de Investimento para o Cliente:** Ao invés de ficar travado com R$ 1.000.000,00 da venda simples, a **Alavancagem** permite injetar de forma parcelada {fmt_moeda(capital_novo_sac)} ao longo de {m_venda} meses. No final, o investidor **recupera o valor original do terreno e embolsa mais {fmt_moeda(l_sac_real)} de lucro líquido puro**, extraindo a máxima potência sobre cada real investido.")
 
 # =========================================================================
-# 7. MATRIZ DETALHADA - SISTEMA LINEAR ANTI-SYNTAXERROR (BLINDAGEM TOTAL)
+# 7. MATRIZ COMPARATIVA MASTER (FLAT E LINEAR - PREVENÇÃO ABSOLUTA)
 # =========================================================================
 st.markdown("---")
 st.header("📊 Comparativo Detalhado de Estruturação de Capital")
 st.caption("Visão matricial aberta contendo a origem de cada indicador físico, bancário e de bolso.")
 
-# Criação das séries isoladas em dicionários primitivos, eliminando blocos de colchetes mistos com strings
+# Criando as séries de dados de forma 100% independente e isolada
 v_diretrizes = [
     "Valor Geral de Vendas (VGV)",
     "(-) Credito Estruturado Contratado (5 Tranches)",
@@ -191,7 +192,7 @@ v_diretrizes = [
     "(-) Investimento Liquido Desembolsado do Bolso",
     "  * Capital de Terreno (Fracao Propria Exposta)",
     "  * Desembolso de Parcelas Acumuladas (Obra)",
-    "(=) LUCRO OPERACIONAL LIQUIDO REALIZADO",
+    "(=) LUCRO OPERACIONAL LÍQUIDO REALIZADO",
     "ROI Tradicional (Sobre o Bolso Total)",
     "Retorno sobre o Capital Novo (Eficiencia)",
     "Multiplo de Capital Realizado (MOIC)"
