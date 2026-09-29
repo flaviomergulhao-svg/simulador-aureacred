@@ -104,26 +104,38 @@ cronograma_final.append({
 })
 
 # =========================================================================
-# 3. CONCILIAÇÃO REALISTA DE BOLSO (CÁLCULO RIGOROSO DO ROI)
+# 3. CONCILIAÇÃO PATRIMONIAL CORRIGIDA
 # =========================================================================
-# O capital próprio que REALMENTE sai do bolso do cliente durante a jornada
+# Custos puros do projeto físico (Terreno + Obra)
+custo_projeto_total = v_terr + v_obra
+
+# Dinheiro real que o cliente precisou colocar do bolso (Terreno + o que ultrapassou o financiamento)
 capital_terreno_proprio = v_terr - saldo_devedor_terreno
 aporte_obra_proprio = max(0.0, v_obra - credito_bancario_total)
+invest_inicial_bolso = capital_terreno_proprio + aporte_obra_proprio
 
-# O bolso total engloba o que ele gastou de obra própria + o custo total das parcelas pagas no período
-invest_bolso_proprio = v_terr + v_obra
-invest_bolso_sac = capital_terreno_proprio + aporte_obra_proprio + total_p_sac
-invest_bolso_price = capital_terreno_proprio + aporte_obra_proprio + total_p_price
+# Custo financeiro real (O que pagou de parcelas acumuladas + o que pagou na quitação final - o que pegou do banco)
+custo_financeiro_sac = total_p_sac + quit_sac - (credito_bancario_total + v_taoc)
+custo_financeiro_price = total_p_price + quit_price - (credito_bancario_total + v_taoc)
 
-# Lucro real desconta tudo o que saiu do bolso e o cheque de quitação final do VGV
-l_proprio = v_vgv - invest_bolso_proprio
-l_sac_real = v_vgv - quit_sac - invest_bolso_sac
-l_price_real = v_vgv - quit_price - invest_bolso_price
+# LUCRO LÍQUIDO REAL (Receita VGV - Custos Físicos - Custos Financeiros)
+l_proprio = v_vgv - custo_projeto_total
+l_sac_real = v_vgv - custo_projeto_total - custo_financeiro_sac
+l_price_real = v_vgv - custo_projeto_total - custo_financeiro_price
 
-# Multiplicadores (MOIC)
-moic_proprio = v_vgv / invest_bolso_proprio
-moic_sac = (v_vgv - quit_sac) / invest_bolso_sac if invest_bolso_sac > 0 else 0.0
-moic_price = (v_vgv - quit_price) / invest_bolso_price if invest_bolso_price > 0 else 0.0
+# O Investimento Total do Bolso considera o Capital Inicial + o fluxo de parcelas pagas durante os 18 meses
+bolso_total_sac = invest_inicial_bolso + total_p_sac
+bolso_total_price = invest_inicial_bolso + total_p_price
+
+# ROI Real (Calculado sobre o capital que de fato circulou pelo bolso do cliente)
+roi_proprio = (l_proprio / custo_projeto_total) * 100
+roi_sac = (l_sac_real / bolso_total_sac) * 100
+roi_price = (l_price_real / bolso_total_price) * 100
+
+# Múltiplo sobre o Capital Injetado (MOIC)
+moic_proprio = v_vgv / custo_projeto_total
+moic_sac = (v_vgv - quit_sac) / bolso_total_sac if bolso_total_sac > 0 else 0.0
+moic_price = (v_vgv - quit_price) / bolso_total_price if bolso_total_price > 0 else 0.0
 
 # =========================================================================
 # 4. INTERFACE GRÁFICA DO STREAMLIT
@@ -134,8 +146,8 @@ labels = [
     "Valor Geral de Vendas (VGV)", 
     "(-) Saldo de Dívida para Quitação (Mês 18)", 
     "(-) Investimento Total Desembolsado (Bolso do Cliente)", 
-    "  • Capital do Terreno (Aporte Inicial)", 
-    "  • Custos de Obra Própria + Parcelas Acumuladas",
+    "  • Capital de Entrada (Terreno + Obra Propria)", 
+    "  • Custos de Parcelas Mensais Acumuladas no Período",
     "(=) LUCRO LÍQUIDO REALIZADO", 
     "📊 ROI Real do Empreendedor", 
     "📈 Múltiplo de Capital Realizado (MOIC)"
@@ -143,25 +155,25 @@ labels = [
 
 with st.expander("▶️ Cenário A: Execução Pura com Recursos Próprios (Sem Alavancagem)"):
     val_pr = [
-        fmt_moeda(v_vgv), fmt_moeda(0.0), fmt_moeda(invest_bolso_proprio),
+        fmt_moeda(v_vgv), fmt_moeda(0.0), fmt_moeda(custo_projeto_total),
         fmt_moeda(v_terr), fmt_moeda(v_obra), fmt_moeda(l_proprio), 
-        f"{(l_proprio / invest_bolso_proprio) * 100:.2f}%", f"{moic_proprio:.2f}x"
+        f"{roi_proprio:.2f}%", f"{moic_proprio:.2f}x"
     ]
     st.table(pd.DataFrame({"Diretriz de Análise": labels[:8], "Resultado": val_pr}))
 
 with st.expander("▶️ Cenário B: Alavancagem Inteligente via Sistema SAC"):
     val_sc = [
-        fmt_moeda(v_vgv), fmt_moeda(quit_sac), fmt_moeda(invest_bolso_sac),
-        fmt_moeda(capital_terreno_proprio), fmt_moeda(aporte_obra_proprio + total_p_sac), fmt_moeda(l_sac_real), 
-        f"{(l_sac_real / invest_bolso_sac) * 100:.2f}%", f"{moic_sac:.2f}x"
+        fmt_moeda(v_vgv), fmt_moeda(quit_sac), fmt_moeda(bolso_total_sac),
+        fmt_moeda(invest_inicial_bolso), fmt_moeda(total_p_sac), fmt_moeda(l_sac_real), 
+        f"{roi_sac:.2f}%", f"{moic_sac:.2f}x"
     ]
     st.table(pd.DataFrame({"Diretriz de Análise": labels[:8], "Resultado": val_sc}))
 
 with st.expander("▶️ Cenário C: Alavancagem Inteligente via Sistema Price"):
     val_prc = [
-        fmt_moeda(v_vgv), fmt_moeda(quit_price), fmt_moeda(invest_bolso_price),
-        fmt_moeda(capital_terreno_proprio), fmt_moeda(aporte_obra_proprio + total_p_price), fmt_moeda(l_price_real), 
-        f"{(l_price_real / invest_bolso_price) * 100:.2f}%", f"{moic_price:.2f}x"
+        fmt_moeda(v_vgv), fmt_moeda(quit_price), fmt_moeda(bolso_total_price),
+        fmt_moeda(invest_inicial_bolso), fmt_moeda(total_p_price), fmt_moeda(l_price_real), 
+        f"{roi_price:.2f}%", f"{moic_price:.2f}x"
     ]
     st.table(pd.DataFrame({"Diretriz de Análise": labels[:8], "Resultado": val_prc}))
 
