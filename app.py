@@ -1,9 +1,8 @@
 import streamlit as st
 import pandas as pd
 
-st.set_page_config(layout="wide", page_title="Áurea Cred - Intelligence", page_icon="🛡️")
+st.set_page_config(layout="wide", page_title="Aurea Cred - Intelligence", page_icon="🛡️")
 
-# Cabeçalho Executivo de Alto Padrão
 st.title("🛡️ Painel de Inteligência Financeira & Eficiência de Capital")
 st.subheader("Análise Estratégica para Incorporação de Alto Padrão")
 st.caption("Apresentação Dinâmica de Cenários de Alavancagem Patrimonial")
@@ -173,29 +172,30 @@ with col2:
         st.write(f"• **Lucro Real Geral no Período:** {fmt_moeda(l_sac_real)}")
         st.success(f"🏆 Lucro Realizado com Eficiência Financeira de **{roic_sac:.2f}%** sobre o dinheiro novo.")
 
-st.info(f"💡 **Tese de Investimento para o Cliente:** Ao invés de ficar travado com R$ 1.000.000,00 da venda simples, a **Alavancagem** permite injetar de forma parcelada {fmt_moeda(capital_novo_sac)} ao longo de {m_venda} meses. No final, o investidor **recupera o valor original do terreno e embolsa mais {fmt_moeda(l_sac_real)} de lucro líquido puro**, extraindo a máxima potência sobre cada real investido.")
+st.info(f"💡 **Tese de Investimento para o Cliente:** Ao invés de ficar travado com R$ 1.000.000,00 da venda simples, a **Alavancagem** permite injetar de forma parcelada {fmt_moeda(capital_novo_sac)} ao longo de {m_venda} meses. No final, the investidor **recupera o valor original do terreno e embolsa mais {fmt_moeda(l_sac_real)} de lucro líquido puro**, extraindo a máxima potência sobre cada real investido.")
 
 # =========================================================================
-# 7. MATRIZ DETALHADA - ROTINA ANTI-FALHAS (CONSTRUÇÃO MODULAR SEQUENCIAL)
+# 7. MATRIZ DETALHADA - NOVA ARQUITETURA DE INDICAÇÃO INDEXADA (ANTI-ERROS)
 # =========================================================================
 st.markdown("---")
 st.header("📊 Comparativo Detalhado de Estruturação de Capital")
 st.caption("Visão matricial aberta contendo a origem de cada indicador físico, bancário e de bolso.")
 
-rows_pool = []
+# Dicionários com chaves estritamente numéricas de ID para blindagem total contra quebras de texto
+v_vista_map = {
+    1: fmt_moeda(v_vgv), 2: fmt_moeda(0.0), 3: fmt_moeda(0.0), 4: fmt_moeda(0.0), 5: fmt_moeda(v_vgv),
+    6: fmt_moeda(custo_projeto_total), 7: fmt_moeda(v_terr), 8: fmt_moeda(v_obra), 9: fmt_moeda(l_proprio),
+    10: f"{roi_proprio:.2f}%", 11: f"{roic_proprio:.2f}%", 12: f"{moic_proprio:.2f}x"
+}
 
-def append_metric(name, v1, v2, v3):
-    rows_pool.append({
-        "Diretriz de Análise": name,
-        "Sem Alavancagem (À Vista)": v1,
-        "Alavancagem (Sistema SAC)": v2,
-        "Alavancagem (Sistema Price)": v3
-    })
+v_sac_map = {
+    1: fmt_moeda(v_vgv), 2: fmt_moeda(credito_bancario_total), 3: fmt_moeda(max(0.0, credito_bancario_total - v_obra)),
+    4: fmt_moeda(quit_sac), 5: fmt_moeda(v_vgv - quit_sac), 6: fmt_moeda(bolso_total_sac),
+    7: fmt_moeda(capital_restante_terreno), 8: fmt_moeda(capital_novo_sac), 9: fmt_moeda(l_sac_real),
+    10: f"{roi_sac:.2f}%", 11: f"{roic_sac:.2f}%", 12: f"{moic_sac:.2f}x"
+}
 
-# Injeção das 12 diretrizes operacionais de forma protegida
-append_metric("Valor Geral de Vendas (VGV)", fmt_moeda(v_vgv), fmt_moeda(v_vgv), fmt_moeda(v_vgv))
-append_metric("(-) Crédito Estruturado Contratado (5 Tranches)", fmt_moeda(0.0), fmt_moeda(credito_bancario_total), fmt_moeda(credito_bancario_total))
-append_metric("(-) Saldo Injetado como Capital de Giro", fmt_moeda(0.0), fmt_moeda(max(0.0, credito_bancario_total - v_obra)), fmt_moeda(max(0.0, credito_bancario_total - v_obra)))
-append_metric("(-) Dívida de Quitação (Mês de Saída)", fmt_moeda(0.0), fmt_moeda(quit_sac), fmt_moeda(quit_price))
-append_metric("(=) Receita Líquida pós-Quitação", fmt_moeda(v_vgv), fmt_moeda(v_vgv - quit_sac), fmt_moeda(v_vgv - quit_price))
-append_metric("(-) Investimento Líquido Desembolsado do Bolso", fmt_moeda(custo_projeto_total), fmt_moeda(bolso_total_sac), fmt_moeda(bolso_total_price))
+v_price_map = {
+    1: fmt_moeda(v_vgv), 2: fmt_moeda(credito_bancario_total), 3: fmt_moeda(max(0.0, credito_bancario_total - v_obra)),
+    4: fmt_moeda(quit_price), 5: fmt_moeda(v_vgv - quit_price), 6: fmt_moeda(bolso_total_price),
+    7: fmt_moeda(capital_restante_terreno), 8: fmt_moeda(capital_novo_price), 9: fmt_moeda(l_price_real),
