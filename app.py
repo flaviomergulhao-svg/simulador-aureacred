@@ -37,42 +37,42 @@ m_venda = st.sidebar.slider("Prazo para Construção / Venda (Meses)", min_value
 prazo_contrato = 240
 
 # =========================================================================
-# 2. CÁLCULO DINÂMICO DO TETO DE CRÉDITO
+# 2. CÁLCULO DO TETO DE CRÉDITO E DAS TRANCHES (APENAS FLUXO NUMÉRICO)
 # =========================================================================
 limite_vgv = v_vgv * 0.50
 limite_necessidade = v_obra + saldo_devedor_terreno
 credito_bancario_total = min(limite_vgv, limite_necessidade)
 
-valor_tranche_dinamica = credito_bancario_total / 5
-tranches = {0: valor_tranche_dinamica, 2: valor_tranche_dinamica, 4: valor_tranche_dinamica, 6: valor_tranche_dinamica, 8: valor_tranche_dinamica}
+# Calculamos o valor de cada tranche isolado numericamente
+val_tranche = credito_bancario_total / 5.0
+tranches_map = {0: val_tranche, 2: val_tranche, 4: val_tranche, 6: val_tranche, 8: val_tranche}
 
 st.sidebar.info(f"💳 **Crédito Máximo Configurado:** {fmt_moeda(credito_bancario_total)}")
 
 # =========================================================================
-# 3. MOTOR DE SIMULAÇÃO REESTRUTURADO
+# 3. MOTOR DE SIMULAÇÃO REESTRUTURADO (TOTALMENTE SEPARADO)
 # =========================================================================
-# CORREÇÃO CIRÚRGICA: s_sac e s_pr agora buscam o valor isolado numericamente da chave 0
-t_inicial = tranches[0]
-s_sac = t_inicial + v_taoc
-s_pr = t_inicial + v_taoc
+# Inicialização baseada no número puro de largada para blindar contra TypeErrors
+s_sac = val_tranche + v_taoc
+s_pr = val_tranche + v_taoc
 
 total_p_sac = 0.0
 total_p_price = 0.0
-total_aporte_obra = t_inicial
+total_aporte_obra = val_tranche
 
 cronograma_final = []
 amort_sac_fixa = (credito_bancario_total + v_taoc) / prazo_contrato
 
-for i in range(m_venda + 1):
-    if i > 0 and i in tranches:
-        s_sac += tranches[i]
-        s_pr += tranches[i]
-        total_aporte_obra += tranches[i]
+for idx in range(m_venda + 1):
+    if idx > 0 and idx in tranches_map:
+        s_sac += val_tranche
+        s_pr += val_tranche
+        total_aporte_obra += val_tranche
 
     p_sac_v = 0.00
     p_pr_v = 0.00
     
-    if i > 0:
+    if idx > 0:
         # SAC
         j_sac_m = s_sac * tx_juros
         p_sac_v = amort_sac_fixa + j_sac_m
@@ -87,11 +87,11 @@ for i in range(m_venda + 1):
         s_pr -= amort_pr_m
         total_p_price += p_pr_v
 
-    ap_val = tranches[i] if (i in tranches and i > 0) else 0.0
+    ap_val = val_tranche if (idx in tranches_map and idx > 0) else 0.0
 
     cronograma_final.append({
-        "Período": f"Mês {i}",
-        "Aporte Obra": fmt_moeda(t_inicial) if i == 0 else fmt_moeda(ap_val),
+        "Período": f"Mês {idx}",
+        "Aporte Obra": fmt_moeda(val_tranche) if idx == 0 else fmt_moeda(ap_val),
         "Parcela SAC": fmt_moeda(p_sac_v),
         "Saldo SAC": fmt_moeda(max(0.0, s_sac)),
         "Parcela PRICE": fmt_moeda(p_pr_v),
@@ -131,14 +131,14 @@ l_sac_real = v_vgv - quit_sac - bolso_total_sac
 l_price_real = v_vgv - quit_price - bolso_total_price
 
 # ROI Tradicional
-roi_proprio = (l_proprio / custo_projeto_total) * 100
-roi_sac = (l_sac_real / bolso_total_sac) * 100
-roi_price = (l_price_real / bolso_total_price) * 100
+roi_proprio = (l_proprio / custo_projeto_total) * 100.0
+roi_sac = (l_sac_real / bolso_total_sac) * 100.0
+roi_price = (l_price_real / bolso_total_price) * 100.0
 
 # Retorno sobre o Capital Novo (ROIC)
-roic_proprio = (l_proprio / v_obra) * 100 if v_obra > 0 else 0.0
-roic_sac = (l_sac_real / capital_novo_sac) * 100 if capital_novo_sac > 0 else 0.0
-roic_price = (l_price_real / capital_novo_price) * 100 if capital_novo_price > 0 else 0.0
+roic_proprio = (l_proprio / v_obra) * 100.0 if v_obra > 0 else 0.0
+roic_sac = (l_sac_real / capital_novo_sac) * 100.0 if capital_novo_sac > 0 else 0.0
+roic_price = (l_price_real / capital_novo_price) * 100.0 if capital_novo_price > 0 else 0.0
 
 # Múltiplos
 moic_proprio = v_vgv / custo_projeto_total
@@ -164,7 +164,6 @@ st.markdown("---")
 st.header("🎯 Custo de Oportunidade: Desmobilizar Lote vs. Alavancar Obra")
 
 col1, col2 = st.columns(2)
-
 with col1:
     with st.container(border=True):
         st.subheader("🔴 Estratégia 1: Vender o Lote Hoje")
@@ -186,7 +185,7 @@ with col2:
 st.info(f"💡 **Tese de Investimento para o Cliente:** Ao invés de ficar travado com R$ 1.000.000,00 da venda simples, a **Alavancagem** permite injetar de forma parcelada {fmt_moeda(capital_novo_sac)} ao longo de {m_venda} meses. No final, o investidor **recupera o valor original do terreno e embolsa mais {fmt_moeda(l_sac_real)} de lucro líquido puro**, extraindo a máxima potência sobre cada real investido.")
 
 # =========================================================================
-# 7. MATRIZ COMPARATIVA GERAL DETALHADA (100% AUDITADA CONTRA ERROS)
+# 7. MATRIZ COMPARATIVA GERAL DETALHADA (REESTRUTURAÇÃO COMPLETA ANTI-FALHAS)
 # =========================================================================
 st.markdown("---")
 st.header("📊 Comparativo Detalhado de Estruturação de Capital")
@@ -207,10 +206,6 @@ diretrizes_completas = [
     "📈 Múltiplo de Capital Realizado (MOIC)"
 ]
 
+# Injetando Strings estáticas e formatadas sem misturar código de controle no DataFrame
 c_view_1 = [
     fmt_moeda(v_vgv), fmt_moeda(0.0), fmt_moeda(0.0), fmt_moeda(0.0), fmt_moeda(v_vgv),
-    fmt_moeda(custo_projeto_total), fmt_moeda(v_terr), fmt_moeda(v_obra), fmt_moeda(l_proprio),
-    f"{roi_proprio:.2f}%", f"{roic_proprio:.2f}%", f"{moic_proprio:.2f}x"
-]
-
-c_view_2 = [
