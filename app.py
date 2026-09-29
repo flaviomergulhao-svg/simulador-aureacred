@@ -179,7 +179,7 @@ with col2:
 st.info(f"💡 **Tese de Investimento para o Cliente:** Ao invés de ficar travado com R$ 1.000.000,00 da venda simples, a **Alavancagem** permite injetar de forma parcelada {fmt_moeda(capital_novo_sac)} ao longo de {m_venda} meses. No final, o investidor **recupera o valor original do terreno e embolsa mais {fmt_moeda(l_sac_real)} de lucro líquido puro**, extraindo a máxima potência sobre cada real investido.")
 
 # =========================================================================
-# 7. MATRIZ COMPARATIVA GERAL DETALHADA
+# 7. MATRIZ COMPARATIVA GERAL DETALHADA (CORREÇÃO DE FECHAMENTO CONCEITUAL)
 # =========================================================================
 st.markdown("---")
 st.header("📊 Comparativo Detalhado de Estruturação de Capital")
@@ -221,4 +221,3 @@ col_alavancagem_sac = [
     fmt_moeda(max(0.0, credito_bancario_total - v_obra)),
     fmt_moeda(quit_sac),
     fmt_moeda(v_vgv - quit_sac),
-    fmt_moeda(bolso_total_sac),
