@@ -37,7 +37,7 @@ m_venda = st.sidebar.slider("Prazo para Construção / Venda (Meses)", min_value
 prazo_contrato = 240
 
 # =========================================================================
-# 2. MOTOR MATEMÁTICO TRAVADO E DINÂMICO
+# 2. CÁLCULO DINÂMICO DO TETO DE CRÉDITO
 # =========================================================================
 limite_vgv = v_vgv * 0.50
 limite_necessidade = v_obra + saldo_devedor_terreno
@@ -48,12 +48,18 @@ tranches = {0: valor_tranche_dinamica, 2: valor_tranche_dinamica, 4: valor_tranc
 
 st.sidebar.info(f"💳 **Crédito Máximo Configurado:** {fmt_moeda(credito_bancario_total)}")
 
-# Inicialização segura dos saldos buscando a chave 0 do cronograma
-s_sac = tranches[0] + v_taoc
-s_pr = tranches[0] + v_taoc
+# =========================================================================
+# 3. MOTOR DE SIMULAÇÃO REESTRUTURADO
+# =========================================================================
+# Inicialização correta extraindo o valor inicial numérico da chave 0
+t_zero = tranches[0]
+s_sac = t_zero + v_taoc
+s_pr = t_zero + v_taoc
 
-total_p_sac, total_p_price = 0.0, 0.0
-total_aporte_obra = tranches[0]
+total_p_sac = 0.0
+total_p_price = 0.0
+total_aporte_obra = t_zero
+
 cronograma_final = []
 amort_sac_fixa = (credito_bancario_total + v_taoc) / prazo_contrato
 
@@ -63,7 +69,8 @@ for i in range(m_venda + 1):
         s_pr += tranches[i]
         total_aporte_obra += tranches[i]
 
-    p_sac_v, p_pr_v = 0.00, 0.00
+    p_sac_v = 0.00
+    p_pr_v = 0.00
     
     if i > 0:
         # SAC
@@ -84,7 +91,7 @@ for i in range(m_venda + 1):
 
     cronograma_final.append({
         "Período": f"Mês {i}",
-        "Aporte Obra": fmt_moeda(tranches[0]) if i == 0 else fmt_moeda(ap_val),
+        "Aporte Obra": fmt_moeda(t_zero) if i == 0 else fmt_moeda(ap_val),
         "Parcela SAC": fmt_moeda(p_sac_v),
         "Saldo SAC": fmt_moeda(max(0.0, s_sac)),
         "Parcela PRICE": fmt_moeda(p_pr_v),
@@ -104,7 +111,7 @@ cronograma_final.append({
 })
 
 # =========================================================================
-# 3. MÁQUINA DE CONCILIAÇÃO PATRIMONIAL
+# 4. CONCILIAÇÃO FINANCEIRA AVANÇADA (ROI + CAPITAL NOVO)
 # =========================================================================
 capital_ja_pago_terreno = v_terr - saldo_devedor_terreno
 aporte_obra_proprio = max(0.0, (v_obra + saldo_devedor_terreno) - credito_bancario_total)
@@ -115,92 +122,103 @@ custo_projeto_total = v_terr + v_obra
 bolso_total_sac = capital_restante_terreno + total_p_sac + aporte_obra_proprio
 bolso_total_price = capital_restante_terreno + total_p_price + aporte_obra_proprio
 
-減_novo_sac = total_p_sac + aporte_obra_proprio
-減_novo_price = total_p_price + aporte_obra_proprio
+capital_novo_sac = total_p_sac + aporte_obra_proprio
+capital_novo_price = total_p_price + aporte_obra_proprio
 
+# Lucros Líquidos Reais
 l_proprio = v_vgv - custo_projeto_total
 l_sac_real = v_vgv - quit_sac - bolso_total_sac
 l_price_real = v_vgv - quit_price - bolso_total_price
 
+# ROI Tradicional
 roi_proprio = (l_proprio / custo_projeto_total) * 100
 roi_sac = (l_sac_real / bolso_total_sac) * 100
 roi_price = (l_price_real / bolso_total_price) * 100
 
-roic_proprio = (l_proprio / v_obra) * 100 if v_obra > 0 else 0.0
-roic_sac = (l_sac_real / 減_novo_sac) * 100 if 減_novo_sac > 0 else 0.0
-roic_price = (l_price_real / 減_novo_price) * 100 if 減_novo_price > 0 else 0.0
+# Retorno sobre o Capital Novo (ROIC)
+if v_obra > 0:
+    roic_proprio = (l_proprio / v_obra) * 100
+else:
+    roic_proprio = 0.0
 
+if capital_novo_sac > 0:
+    roic_sac = (l_sac_real / capital_novo_sac) * 100
+else:
+    roic_sac = 0.0
+
+if capital_novo_price > 0:
+    roic_price = (l_price_real / capital_novo_price) * 100
+else:
+    roic_price = 0.0
+
+# Múltiplos
 moic_proprio = v_vgv / custo_projeto_total
 moic_sac = (v_vgv - quit_sac) / bolso_total_sac
 moic_price = (v_vgv - quit_price) / bolso_total_price
 
 # =========================================================================
-# 4. DASHBOARD VISUAL HIGH-TICKET (INDICADORES DE TOPO)
+# 5. HIGHLIGHTS DA APRESENTAÇÃO
 # =========================================================================
 st.markdown("---")
 c_met1, c_met2, c_met3 = st.columns(3)
 with c_met1:
-    st.metric(label="Lucro (Sem Alavancagem)", value=fmt_moeda(l_proprio), help="Execução pura aportando capital próprio.")
+    st.metric(label="Lucro Cenário Sem Alavancagem", value=fmt_moeda(l_proprio))
 with c_met2:
     st.metric(label="Lucro Alavancagem (SAC)", value=fmt_moeda(l_sac_real), delta=f"Eficiência Caixa: {roic_sac:.2f}%")
 with c_met3:
     st.metric(label="Lucro Alavancagem (Price)", value=fmt_moeda(l_price_real), delta=f"Eficiência Caixa: {roic_price:.2f}%")
 
 # =========================================================================
-# 5. ANÁLISE DE CUSTO DE OPORTUNIDADE (O CORAÇÃO DO PITCH)
+# 6. TESE CENTRAL DA REUNIÃO: CUSTO DE OPORTUNIDADE
 # =========================================================================
 st.markdown("---")
 st.header("🎯 Custo de Oportunidade: Desmobilizar Lote vs. Alavancar Obra")
 
 col1, col2 = st.columns(2)
+
 with col1:
     with st.container(border=True):
         st.subheader("🔴 Estratégia 1: Vender o Lote Hoje")
-        st.write(f"• **Decisão:** Liquidar o patrimônio bruto imobilizado sem agregar valor construtivo.")
-        st.write(f"• **Dinheiro Novo Injetado:** {fmt_moeda(0.0)}")
-        st.write(f"• **Retorno de Caixa no Mês {m_venda}:** {fmt_moeda(v_terr)}")
-        st.write(f"• **Lucro Real Gerado:** {fmt_moeda(0.0)}")
-        st.error("❌ O investidor deixa 100% da margem de construção na mesa para terceiros lucrarem.")
+        st.write(f"• **Decisão Comercial:** Liquidar o patrimônio imobilizado bruto sem agregar valor construtivo.")
+        st.write(f"• **Dinheiro Novo do Bolso:** {fmt_moeda(0.0)}")
+        st.write(f"• **Liquidez de Retorno (Mês {m_venda}):** {fmt_moeda(v_terr)}")
+        st.write(f"• **Lucro Líquido Realizado:** {fmt_moeda(0.0)} *(Apenas recuperou o valor do lote)*")
+        st.error("❌ Você deixa 100% do lucro da incorporação na mesa.")
 
 with col2:
     with st.container(border=True):
-        st.subheader("🟢 Estratégia 2: Alavancagem de Obra (SAC)")
-        st.write(f"• **Decisão:** O banco custeia a obra. O investidor carrega apenas o fluxo de parcelas.")
-        st.write(f"• **Dinheiro Novo em Movimento:** {fmt_moeda(減_novo_sac)}")
-        st.write(f"• **Retorno pós-Quitação do Banco:** {fmt_moeda(v_vgv - quit_sac)}")
-        st.write(f"• **Lucro Líquido Realizado:** {fmt_moeda(l_sac_real)}")
-        st.success(f"🏆 Eficiência Financeira de **{roic_sac:.2f}%** sobre cada real novo movimentado.")
+        st.subheader("🟢 Estratégia 2: Reter o Lote + Iniciar Alavancagem")
+        st.write(f"• **Decisão Comercial:** O banco cobre a obra. O investidor carrega apenas o fluxo de parcelas.")
+        st.write(f"• **Dinheiro Novo em Movimento (Alavancagem SAC):** {fmt_moeda(capital_novo_sac)}")
+        st.write(f"• **Retorno pós-Quitação do Banco (SAC):** {fmt_moeda(v_vgv - quit_sac)}")
+        st.write(f"• **Lucro Real Gerado no Período:** {fmt_moeda(l_sac_real)}")
+        st.success(f"🏆 Lucro Realizado com Eficiência Financeira de **{roic_sac:.2f}%** sobre o dinheiro novo.")
 
-st.info(f"💡 **Tese Executiva:** Ao invés de travar a liquidez vendendo o lote isolado, a **Alavancagem** permite aplicar de forma parcelada {fmt_moeda(減_novo_sac)} ao longo de {m_venda} meses. No encerramento da venda (VGV), o construtor **resgata o valor integral do terreno e captura mais {fmt_moeda(l_sac_real)} de lucro limpo**, multiplicando a eficiência do caixa.")
+st.info(f"💡 **Tese de Investimento para o Cliente:** Ao invés de ficar travado com R$ 1.000.000,00 da venda simples, a **Alavancagem** permite injetar de forma parcelada {fmt_moeda(capital_novo_sac)} ao longo de {m_venda} meses. No final, o investidor **recupera o valor original do terreno e embolsa mais {fmt_moeda(l_sac_real)} de lucro líquido puro**, extraindo a máxima potência sobre cada real investido.")
 
 # =========================================================================
-# 6. MATRIZ INTEGRAL DE ESTRUTURAÇÃO DE CAPITAL (VISÃO DE NEGÓCIO DETALHADA)
+# 7. MATRIZ COMPARATIVA GERAL DETALHADA
 # =========================================================================
 st.markdown("---")
 st.header("📊 Comparativo Detalhado de Estruturação de Capital")
-st.caption("Matriz master unificada para auditoria de desempenho de balanço patrimonial.")
+st.caption("Visão matricial aberta contendo a origem de cada indicador físico, bancário e de bolso.")
 
-# Criação do dicionário estruturado à prova de erros de sintaxe
-dados_master = {
-    "Diretriz de Análise": [
-        "Valor Geral de Vendas (VGV)",
-        "(-) Crédito Estruturado Contratado (5 Tranches)",
-        "(-) Saldo Injetado como Capital de Giro",
-        "(-) Dívida de Quitação de Saída (Mês de Venda)",
-        "(=) Receita Líquida pós-Quitação Bancária",
-        "(-) Investimento Líquido Desembolsado do Bolso",
-        "  • Capital de Terreno (Fração de Capital Próprio)",
-        "  • Desembolso de Parcelas Acumuladas no Período",
-        "(=) LUCRO OPERACIONAL LÍQUIDO REALIZADO",
-        "📊 ROI Tradicional (Sobre o Bolso Total)",
-        "🚀 Retorno sobre o Capital Novo (Eficiência do Fluxo)",
-        "📈 Múltiplo de Capital Realizado (MOIC)"
-    ],
-    "Sem Alavancagem (À Vista)": [
-        fmt_moeda(v_vgv), fmt_moeda(0.0), fmt_moeda(0.0), fmt_moeda(0.0), fmt_moeda(v_vgv),
-        fmt_moeda(custo_projeto_total), fmt_moeda(v_terr), fmt_moeda(v_obra),
-        fmt_moeda(l_proprio), f"{roi_proprio:.2f}%", f"{roic_proprio:.2f}%", f"{moic_proprio:.2f}x"
-    ],
-    "Alavancagem (Sistema SAC)": [
-        fmt_moeda(v_vgv), fmt_moeda(credito_bancario_total), fmt_moeda(max(0.0, credito_bancario_total - v_obra)),
-        fmt_moeda(quit_sac), fmt_moeda(v_vgv - quit_sac), fmt_moeda(bolso_total_sac),
+diretrizes_completas = [
+    "Valor Geral de Vendas (VGV)",
+    "(-) Crédito Estruturado Contratado (5 Tranches)",
+    "(-) Saldo Injetado como Capital de Giro",
+    "(-) Dívida de Quitação (Mês de Saída)",
+    "(=) Receita Líquida pós-Quitação",
+    "(-) Investimento Líquido Desembolsado do Bolso",
+    "  • Capital de Terreno (Fração Própria Exposta)",
+    "  • Desembolso de Parcelas Acumuladas (Obra)",
+    "(=) LUCRO OPERACIONAL LÍQUIDO REALIZADO",
+    "📊 ROI Tradicional (Sobre o Bolso Total)",
+    "🚀 Retorno sobre o Capital Novo (Eficiência do Fluxo)",
+    "📈 Múltiplo de Capital Realizado (MOIC)"
+]
+
+# Construção das colunas com tratamento de texto limpo para evitar erros de compilação
+c_view_1 = [
+    fmt_moeda(v_vgv), fmt_moeda(0.0), fmt_moeda(0.0), fmt_moeda(0.0), fmt_moeda(v_vgv),
+    fmt_moeda(custo_projeto_total), fmt_moeda(v_terr), fmt_moeda(v_obra), fmt_moeda(l_proprio),
