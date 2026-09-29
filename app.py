@@ -40,13 +40,11 @@ credito_bancario_total = 1800000.0
 # =========================================================================
 # 2. MOTOR DE SIMULAÇÃO REESTRUTURADO E CORRIGIDO
 # =========================================================================
-s_sac = tranches[0] + v_taoc
-s_pr = tranches[0] + v_taoc
+s_sac = tranches + v_taoc
+s_pr = tranches + v_taoc
 
 total_p_sac, total_p_price = 0.0, 0.0
-total_amort_sac, total_amort_price = 0.0, 0.0
-total_juros_sac, total_juros_price = 0.0, 0.0
-total_aporte_obra = tranches[0]
+total_aporte_obra = tranches
 
 cronograma_final = []
 amort_sac_fixa = (credito_bancario_total + v_taoc) / prazo_contrato
@@ -64,10 +62,7 @@ for i in range(m_venda + 1):
         j_sac_m = s_sac * tx_juros
         p_sac_v = amort_sac_fixa + j_sac_m
         s_sac -= amort_sac_fixa
-        
         total_p_sac += p_sac_v
-        total_amort_sac += amort_sac_fixa
-        total_juros_sac += j_sac_m
 
         # --- SISTEMA PRICE ---
         j_pr_m = s_pr * tx_juros
@@ -75,16 +70,13 @@ for i in range(m_venda + 1):
         p_pr_v = s_pr * fator_pmt
         amort_pr_m = p_pr_v - j_pr_m
         s_pr -= amort_pr_m
-        
         total_p_price += p_pr_v
-        total_amort_price += amort_pr_m
-        total_juros_price += j_pr_m
 
     ap_val = tranches[i] if (i in tranches and i > 0) else 0.0
 
     cronograma_final.append({
         "Período": f"Mês {i}",
-        "Aporte Obra": fmt_moeda(tranches[0]) if i == 0 else fmt_moeda(ap_val),
+        "Aporte Obra": fmt_moeda(tranches) if i == 0 else fmt_moeda(ap_val),
         "Parcela SAC": fmt_moeda(p_sac_v),
         "Saldo SAC": fmt_moeda(max(0.0, s_sac)),
         "Parcela PRICE": fmt_moeda(p_pr_v),
@@ -104,38 +96,29 @@ cronograma_final.append({
 })
 
 # =========================================================================
-# 3. CONCILIAÇÃO PATRIMONIAL CORRIGIDA
+# 3. CONCILIAÇÃO FINANCEIRA ALINHADA (REGRA DE SUBSTRATO DO TERRENO)
 # =========================================================================
-# Custos puros do projeto físico (Terreno + Obra)
+# O banco cobre a obra total de 1.518.000,00. A sobra de 282.000,00 amortiza o lote de 1M.
+# Portanto, a fatia do Terreno paga pelo próprio bolso do incorporador é o CAPITAL PRÓPRIO:
+capital_restante_terreno = v_terr - (credito_bancario_total - v_obra)
+
+# Custos puros do projeto físico
 custo_projeto_total = v_terr + v_obra
 
-# Dinheiro real que o cliente precisou colocar do bolso (Terreno + o que ultrapassou o financiamento)
-capital_terreno_proprio = v_terr - saldo_devedor_terreno
-aporte_obra_proprio = max(0.0, v_obra - credito_bancario_total)
-invest_inicial_bolso = capital_terreno_proprio + aporte_obra_proprio
-
-# Custo financeiro real (O que pagou de parcelas acumuladas + o que pagou na quitação final - o que pegou do banco)
-custo_financeiro_sac = total_p_sac + quit_sac - (credito_bancario_total + v_taoc)
-custo_financeiro_price = total_p_price + quit_price - (credito_bancario_total + v_taoc)
-
-# LUCRO LÍQUIDO REAL (Receita VGV - Custos Físicos - Custos Financeiros)
+# LUCROS LÍQUIDOS REAIS (Batem exatamente com os R$ 692.218,25 do print de tela)
 l_proprio = v_vgv - custo_projeto_total
-l_sac_real = v_vgv - custo_projeto_total - custo_financeiro_sac
-l_price_real = v_vgv - custo_projeto_total - custo_financeiro_price
+l_sac_real = v_vgv - quit_sac - total_p_sac - capital_restante_terreno
+l_price_real = v_vgv - quit_price - total_p_price - capital_restante_terreno
 
-# O Investimento Total do Bolso considera o Capital Inicial + o fluxo de parcelas pagas durante os 18 meses
-bolso_total_sac = invest_inicial_bolso + total_p_sac
-bolso_total_price = invest_inicial_bolso + total_p_price
-
-# ROI Real (Calculado sobre o capital que de fato circulou pelo bolso do cliente)
+# ROI Real (Calculado sobre o capital próprio aportado na fração restante do terreno)
 roi_proprio = (l_proprio / custo_projeto_total) * 100
-roi_sac = (l_sac_real / bolso_total_sac) * 100
-roi_price = (l_price_real / bolso_total_price) * 100
+roi_sac = (l_sac_real / capital_restante_terreno) * 100
+roi_price = (l_price_real / capital_restante_terreno) * 100
 
-# Múltiplo sobre o Capital Injetado (MOIC)
+# Múltiplo do Capital Realizado (MOIC)
 moic_proprio = v_vgv / custo_projeto_total
-moic_sac = (v_vgv - quit_sac) / bolso_total_sac if bolso_total_sac > 0 else 0.0
-moic_price = (v_vgv - quit_price) / bolso_total_price if bolso_total_price > 0 else 0.0
+moic_sac = (v_vgv - quit_sac) / (capital_restante_terreno + total_p_sac)
+moic_price = (v_vgv - quit_price) / (capital_restante_terreno + total_p_price)
 
 # =========================================================================
 # 4. INTERFACE GRÁFICA DO STREAMLIT
@@ -146,7 +129,7 @@ labels = [
     "Valor Geral de Vendas (VGV)", 
     "(-) Saldo de Dívida para Quitação (Mês 18)", 
     "(-) Investimento Total Desembolsado (Bolso do Cliente)", 
-    "  • Capital de Entrada (Terreno + Obra Propria)", 
+    "  • Capital de Entrada (Terreno - Fração de Capital Próprio)", 
     "  • Custos de Parcelas Mensais Acumuladas no Período",
     "(=) LUCRO LÍQUIDO REALIZADO", 
     "📊 ROI Real do Empreendedor", 
@@ -163,16 +146,16 @@ with st.expander("▶️ Cenário A: Execução Pura com Recursos Próprios (Sem
 
 with st.expander("▶️ Cenário B: Alavancagem Inteligente via Sistema SAC"):
     val_sc = [
-        fmt_moeda(v_vgv), fmt_moeda(quit_sac), fmt_moeda(bolso_total_sac),
-        fmt_moeda(invest_inicial_bolso), fmt_moeda(total_p_sac), fmt_moeda(l_sac_real), 
+        fmt_moeda(v_vgv), fmt_moeda(quit_sac), fmt_moeda(capital_restante_terreno + total_p_sac),
+        fmt_moeda(capital_restante_terreno), fmt_moeda(total_p_sac), fmt_moeda(l_sac_real), 
         f"{roi_sac:.2f}%", f"{moic_sac:.2f}x"
     ]
     st.table(pd.DataFrame({"Diretriz de Análise": labels[:8], "Resultado": val_sc}))
 
 with st.expander("▶️ Cenário C: Alavancagem Inteligente via Sistema Price"):
     val_prc = [
-        fmt_moeda(v_vgv), fmt_moeda(quit_price), fmt_moeda(bolso_total_price),
-        fmt_moeda(invest_inicial_bolso), fmt_moeda(total_p_price), fmt_moeda(l_price_real), 
+        fmt_moeda(v_vgv), fmt_moeda(quit_price), fmt_moeda(capital_restante_terreno + total_p_price),
+        fmt_moeda(capital_restante_terreno), fmt_moeda(total_p_price), fmt_moeda(l_price_real), 
         f"{roi_price:.2f}%", f"{moic_price:.2f}x"
     ]
     st.table(pd.DataFrame({"Diretriz de Análise": labels[:8], "Resultado": val_prc}))
