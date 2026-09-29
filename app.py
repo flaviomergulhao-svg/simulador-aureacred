@@ -17,7 +17,9 @@ def fmt_moeda(valor):
 st.sidebar.header("⚙️ Premissas Operacionais")
 v_vgv = st.sidebar.number_input("Valor Geral de Vendas (VGV)", min_value=100000.0, value=3600000.0, step=100000.0, format="%.2f")
 v_obra = st.sidebar.number_input("Orçamento Estimado da Obra", min_value=100000.0, value=1518000.0, step=5000.0, format="%.2f")
-v_terr = st.sidebar.number_input("Valor de Avaliação do Terreno", min_value=0.0, value=1000000.0, step=50000.0, format="%.2f")
+
+# ALTERAÇÃO REALIZADA AQUI: Mudança no texto do label para "Valor do Terreno"
+v_terr = st.sidebar.number_input("Valor do Terreno", min_value=0.0, value=1000000.0, step=50000.0, format="%.2f")
 
 status_terreno = st.sidebar.selectbox("O Terreno está Quitado?", ["Sim", "Não"])
 if status_terreno == "Não":
@@ -48,11 +50,11 @@ st.sidebar.info(f"💳 **Crédito Máximo Liberado:** {fmt_moeda(credito_bancari
 # =========================================================================
 # 3. MOTOR DE SIMULAÇÃO REESTRUTURADO E CORRIGIDO
 # =========================================================================
-s_sac = tranches[0] + v_taoc
-s_pr = tranches[0] + v_taoc
+s_sac = tranches + v_taoc
+s_pr = tranches + v_taoc
 
 total_p_sac, total_p_price = 0.0, 0.0
-total_aporte_obra = tranches[0]
+total_aporte_obra = tranches
 
 cronograma_final = []
 amort_sac_fixa = (credito_bancario_total + v_taoc) / prazo_contrato
@@ -84,7 +86,7 @@ for i in range(m_venda + 1):
 
     cronograma_final.append({
         "Período": f"Mês {i}",
-        "Aporte Obra": fmt_moeda(tranches[0]) if i == 0 else fmt_moeda(ap_val),
+        "Aporte Obra": fmt_moeda(tranches) if i == 0 else fmt_moeda(ap_val),
         "Parcela SAC": fmt_moeda(p_sac_v),
         "Saldo SAC": fmt_moeda(max(0.0, s_sac)),
         "Parcela PRICE": fmt_moeda(p_pr_v),
@@ -106,17 +108,15 @@ cronograma_final.append({
 # =========================================================================
 # 4. CONCILIAÇÃO FINANCEIRA AVANÇADA (ROI + CAPITAL NOVO)
 # =========================================================================
-# A sobra do banco (1.8M - 1.518M = 282k) liquida parte do lote de 1M. O que sobra é o capital próprio exposto no lote:
+capital_ja_pago_terreno = v_terr - saldo_devedor_terreno
+aporte_obra_proprio = max(0.0, (v_obra + saldo_devedor_terreno) - credito_bancario_total)
+
 capital_restante_terreno = v_terr - (credito_bancario_total - v_obra)
 custo_projeto_total = v_terr + v_obra
 
-aporte_obra_proprio = max(0.0, (v_obra + saldo_devedor_terreno) - credito_bancario_total)
-
-# Ajuste das bases de desembolso total refletindo o capital remanescente do lote
 bolso_total_sac = capital_restante_terreno + total_p_sac + aporte_obra_proprio
 bolso_total_price = capital_restante_terreno + total_p_price + aporte_obra_proprio
 
-# Fluxo de capital novo colocado em movimento (Exclui a entrada do terreno quitado)
 capital_novo_sac = total_p_sac + aporte_obra_proprio
 capital_novo_price = total_p_price + aporte_obra_proprio
 
@@ -125,7 +125,7 @@ l_proprio = v_vgv - custo_projeto_total
 l_sac_real = v_vgv - quit_sac - bolso_total_sac
 l_price_real = v_vgv - quit_price - bolso_total_price
 
-# ROI Tradicional corrigido sobre a base do bolso ajustada
+# ROI Tradicional
 roi_proprio = (l_proprio / custo_projeto_total) * 100
 roi_sac = (l_sac_real / bolso_total_sac) * 100
 roi_price = (l_price_real / bolso_total_price) * 100
@@ -135,7 +135,6 @@ roic_proprio = (l_proprio / v_obra) * 100 if v_obra > 0 else 0.0
 roic_sac = (l_sac_real / capital_novo_sac) * 100 if capital_novo_sac > 0 else 0.0
 roic_price = (l_price_real / capital_novo_price) * 100 if capital_novo_price > 0 else 0.0
 
-# Múltiplos
 moic_proprio = v_vgv / custo_projeto_total
 moic_sac = (v_vgv - quit_sac) / bolso_total_sac
 moic_price = (v_vgv - quit_price) / bolso_total_price
@@ -166,7 +165,6 @@ with st.expander("▶️ Cenário A: Execução Pura com Recursos Próprios (Sem
     st.table(pd.DataFrame({"Diretriz de Análise": labels, "Resultado": val_pr}))
 
 with st.expander("▶️ Cenário B: Alavancagem Inteligente via Sistema SAC"):
-    # CORREÇÃO CRÍTICA AQUI: val_sc agora plota capital_restante_terreno na linha correspondente
     val_sc = [
         fmt_moeda(v_vgv), fmt_moeda(quit_sac), fmt_moeda(bolso_total_sac),
         fmt_moeda(capital_restante_terreno), fmt_moeda(capital_novo_sac), fmt_moeda(l_sac_real), 
@@ -175,7 +173,6 @@ with st.expander("▶️ Cenário B: Alavancagem Inteligente via Sistema SAC"):
     st.table(pd.DataFrame({"Diretriz de Análise": labels, "Resultado": val_sc}))
 
 with st.expander("▶️ Cenário C: Alavancagem Inteligente via Sistema Price"):
-    # CORREÇÃO CRÍTICA AQUI: val_prc agora plota capital_restante_terreno na linha correspondente
     val_prc = [
         fmt_moeda(v_vgv), fmt_moeda(quit_price), fmt_moeda(bolso_total_price),
         fmt_moeda(capital_restante_terreno), fmt_moeda(capital_novo_price), fmt_moeda(l_price_real), 
@@ -184,9 +181,27 @@ with st.expander("▶️ Cenário C: Alavancagem Inteligente via Sistema Price")
     st.table(pd.DataFrame({"Diretriz de Análise": labels, "Resultado": val_prc}))
 
 # =========================================================================
-# 6. FLUXO DETALHADO DO CRONOGRAMA MES A MES
+# 6. ANÁLISE DE CUSTO DE OPORTUNIDADE
 # =========================================================================
-st.header("2. Evolução Patrimonial e Cronograma Mensal")
-st.caption(f"Visão detalhada do fluxo acumulado para uma estratégia de saída programada em {m_venda} meses.")
-df_cronograma = pd.DataFrame(cronograma_final)
-st.dataframe(df_cronograma, use_container_width=True, hide_index=True)
+st.header("2. Análise de Custo de Oportunidade: Vender Lote vs. Alavancar")
+
+col1, col2 = st.columns(2)
+
+with col1:
+    st.subheader("🔴 Opção 1: Vender o Lote Hoje")
+    st.write(f"• **Ação:** O investidor decide apenas desmobilizar o ativo patrimonial bruto.")
+    st.write(f"• **Dinheiro Novo do Bolso:** {fmt_moeda(0.0)}")
+    st.write(f"• **Retorno de Caixa no Mês {m_venda}:** {fmt_moeda(v_terr)}")
+    st.write(f"• **Lucro Líquido Realizado:** {fmt_moeda(0.0)} *(Apenas recuperou o custo de aquisição do lote)*")
+    st.metric(label="Eficiência do Fluxo Novo", value="0.00%")
+
+with col2:
+    st.subheader("🟢 Opção 2: Reter o Lote + Investir em Alavancagem")
+    st.write(f"• **Ação:** O banco paga 100% da obra e abate {fmt_moeda(credito_bancario_total - v_obra)} do terreno. O investidor cobre as parcelas.")
+    st.write(f"• **Dinheiro Novo do Bolso (Fluxo):** {fmt_moeda(capital_novo_sac)}")
+    st.write(f"• **Retorno de Caixa Líquido no Mês {m_venda}:** {fmt_moeda(v_vgv - quit_sac)}")
+    st.write(f"• **Lucro Líquido Adicional Realizado:** {fmt_moeda(l_sac_real)}")
+    st.metric(label="Eficiência do Fluxo Novo (ROIC Alavancado)", value=f"{roic_sac:.2f}%", delta=f"{roic_sac - roic_proprio:.2f}% vs À Vista")
+
+st.info(f"💡 **Tese de Investimento para o Cliente:** Ao optar por colocar {fmt_moeda(capital_novo_sac)} em movimento de forma parcelada ao longo de {m_venda} meses para carregar o crédito, o construtor evita deixar {fmt_moeda(l_sac_real)} de lucro puro na mesa. No encerramento, ele resgata o valor integral do seu terreno original e captura mais **{fmt_moeda(l_sac_real)} de liquidez direta no caixa**, operando com uma eficiência financeira de **{roic_sac:.2f}%** sobre cada real novo aportado.")
+
