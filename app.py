@@ -1,4 +1,4 @@
-import streamlit st
+import streamlit as st
 import pandas as pd
 
 st.set_page_config(layout="wide", page_title="Áurea Cred - Intelligence", page_icon="🛡️")
@@ -182,10 +182,8 @@ st.markdown("---")
 st.header("📊 Comparativo Detalhado de Estruturação de Capital")
 st.caption("Visão matricial aberta contendo a origem de cada indicador físico, bancário e de bolso.")
 
-# Inicialização vazia e limpa da estrutura
 rows_pool = []
 
-# Função interna de montagem: a blindagem definitiva contra SyntaxErrors de colchetes abertos
 def append_metric(name, v1, v2, v3):
     rows_pool.append({
         "Diretriz de Análise": name,
@@ -194,9 +192,10 @@ def append_metric(name, v1, v2, v3):
         "Alavancagem (Sistema Price)": v3
     })
 
-# Alimentação modular da tabela linha por linha (Se você errar uma linha, apenas ela falha, o app não cai)
+# Injeção das 12 diretrizes operacionais de forma protegida
 append_metric("Valor Geral de Vendas (VGV)", fmt_moeda(v_vgv), fmt_moeda(v_vgv), fmt_moeda(v_vgv))
 append_metric("(-) Crédito Estruturado Contratado (5 Tranches)", fmt_moeda(0.0), fmt_moeda(credito_bancario_total), fmt_moeda(credito_bancario_total))
 append_metric("(-) Saldo Injetado como Capital de Giro", fmt_moeda(0.0), fmt_moeda(max(0.0, credito_bancario_total - v_obra)), fmt_moeda(max(0.0, credito_bancario_total - v_obra)))
 append_metric("(-) Dívida de Quitação (Mês de Saída)", fmt_moeda(0.0), fmt_moeda(quit_sac), fmt_moeda(quit_price))
 append_metric("(=) Receita Líquida pós-Quitação", fmt_moeda(v_vgv), fmt_moeda(v_vgv - quit_sac), fmt_moeda(v_vgv - quit_price))
+append_metric("(-) Investimento Líquido Desembolsado do Bolso", fmt_moeda(custo_projeto_total), fmt_moeda(bolso_total_sac), fmt_moeda(bolso_total_price))
