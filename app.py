@@ -34,28 +34,15 @@ m_venda = st.sidebar.slider("Prazo para Venda/Quitação (Meses)", min_value=6, 
 prazo_contrato = 240
 
 # =========================================================================
-# 2. CÁLCULO DINÂMICO DO TETO DE CRÉDITO (SUA REGRA DE NEGÓCIO)
+# 2. CÁLCULO DINÂMICO DO TETO DE CRÉDITO
 # =========================================================================
-# Regra 1: Max 50% do VGV
 limite_vgv = v_vgv * 0.50
-
-# Regra 2: Custo total de investimento necessário (Obra + Quitação do Terreno Atual)
 limite_necessidade = v_obra + saldo_devedor_terreno
-
-# O crédito real concedido será o menor entre os dois limites
 credito_bancario_total = min(limite_vgv, limite_necessidade)
 
-# Divisão das 5 tranches de forma 100% dinâmica baseada no teto liberado
 valor_tranche_dinamica = credito_bancario_total / 5
-tranches = {
-    0: valor_tranche_dinamica, 
-    2: valor_tranche_dinamica, 
-    4: valor_tranche_dinamica, 
-    6: valor_tranche_dinamica, 
-    8: valor_tranche_dinamica
-}
+tranches = {0: valor_tranche_dinamica, 2: valor_tranche_dinamica, 4: valor_tranche_dinamica, 6: valor_tranche_dinamica, 8: valor_tranche_dinamica}
 
-# Informativo visual sobre o limite calculado no topo da barra lateral
 st.sidebar.info(f"💳 **Crédito Máximo Liberado:** {fmt_moeda(credito_bancario_total)}")
 
 # =========================================================================
@@ -117,34 +104,37 @@ cronograma_final.append({
 })
 
 # =========================================================================
-# 4. CONCILIAÇÃO FINANCEIRA COM TRAVA DE CRÉDITO
+# 4. CONCILIAÇÃO FINANCEIRA AVANÇADA (ROI + CAPITAL NOVO)
 # =========================================================================
-# O capital que de fato já estava pago pelo cliente no lote antes da nova operação
 capital_ja_pago_terreno = v_terr - saldo_devedor_terreno
-
-# Definição do aporte de recursos próprios complementar (Caso o limite do VGV seja menor que a necessidade)
 aporte_obra_proprio = max(0.0, (v_obra + saldo_devedor_terreno) - credito_bancario_total)
 
-# O capital de entrada real imobilizado pelo construtor
-capital_entrada_real = capital_ja_pago_terreno + p_sac_v * 0 # Apenas indexador de largada
+# Bases de Desembolso (Bolso Cheio)
+bolso_total_sac = capital_ja_pago_terreno + total_p_sac + aporte_obra_proprio
+bolso_total_price = capital_ja_pago_terreno + total_p_price + aporte_obra_proprio
 
-# Custos consolidados do projeto
-custo_projeto_total = v_terr + v_obra
-
-# Cálculo do Bolso Consolidado ajustado para o cenário de pendência de terreno
-bolso_total_sac = capital_ja_pago_terreno + aporte_obra_proprio + total_p_sac
-bolso_total_price = capital_ja_pago_terreno + aporte_obra_proprio + total_p_price
+# ISOLAMENTO DO CAPITAL NOVO (Exclui o patrimônio que já estava imobilizado no Terreno Quitado)
+capital_novo_sac = total_p_sac + aporte_obra_proprio
+capital_novo_price = total_p_price + aporte_obra_proprio
 
 # Lucros Líquidos Reais
+custo_projeto_total = v_terr + v_obra
 l_proprio = v_vgv - custo_projeto_total
 l_sac_real = v_vgv - quit_sac - bolso_total_sac
 l_price_real = v_vgv - quit_price - bolso_total_price
 
-# ROIs recalculados sobre a exposição real final
+# ROI Tradicional (Sobre o Bolso Total)
 roi_proprio = (l_proprio / custo_projeto_total) * 100
 roi_sac = (l_sac_real / bolso_total_sac) * 100
 roi_price = (l_price_real / bolso_total_price) * 100
 
+# NOVA MÉTRICA: RETORNO SOBRE O CAPITAL NOVO (ROIC)
+# Para o cenário à vista, todo o capital de obra é considerado capital novo
+roic_proprio = (l_proprio / v_obra) * 100 if v_obra > 0 else 0.0
+roic_sac = (l_sac_real / capital_novo_sac) * 100 if capital_novo_sac > 0 else 0.0
+roic_price = (l_price_real / capital_novo_price) * 100 if capital_novo_price > 0 else 0.0
+
+# Múltiplos MOC/MOIC
 moic_proprio = v_vgv / custo_projeto_total
 moic_sac = (v_vgv - quit_sac) / bolso_total_sac
 moic_price = (v_vgv - quit_price) / bolso_total_price
@@ -157,11 +147,12 @@ st.header(f"1. Simulação de Cenários de Capital ({m_venda} Meses)")
 labels = [
     "Valor Geral de Vendas (VGV)", 
     "(-) Saldo de Dívida para Quitação Final", 
-    "(-) Investimento Total Desembolsado (Bolso do Cliente)", 
-    "  • Capital de Entrada Imobilizado (Fração Paga do Terreno)", 
-    "  • Custos de Parcelas + Aportes Complementares Acumulados",
+    "(-) Investimento Total Desembolsado (Bolso Acumulado)", 
+    "  • Capital Imobilizado de Entrada (Fração Paga do Terreno)", 
+    "  • Fluxo de Capital Novo Injetado (Parcelas + Aportes Obra)",
     "(=) LUCRO LÍQUIDO REALIZADO", 
-    "📊 ROI Real do Empreendedor", 
+    "📊 ROI Tradicional (Sobre o Bolso Total)", 
+    "🚀 Retorno sobre o Capital Novo (Eficiência do Fluxo)",
     "📈 Múltiplo de Capital Realizado (MOIC)"
 ]
 
@@ -169,25 +160,25 @@ with st.expander("▶️ Cenário A: Execução Pura com Recursos Próprios (Sem
     val_pr = [
         fmt_moeda(v_vgv), fmt_moeda(0.0), fmt_moeda(custo_projeto_total),
         fmt_moeda(v_terr), fmt_moeda(v_obra), fmt_moeda(l_proprio), 
-        f"{roi_proprio:.2f}%", f"{moic_proprio:.2f}x"
+        f"{roi_proprio:.2f}%", f"{roic_proprio:.2f}%", f"{moic_proprio:.2f}x"
     ]
-    st.table(pd.DataFrame({"Diretriz de Análise": labels[:8], "Resultado": val_pr}))
+    st.table(pd.DataFrame({"Diretriz de Análise": labels, "Resultado": val_pr}))
 
 with st.expander("▶️ Cenário B: Alavancagem Inteligente via Sistema SAC"):
     val_sc = [
         fmt_moeda(v_vgv), fmt_moeda(quit_sac), fmt_moeda(bolso_total_sac),
-        fmt_moeda(capital_ja_pago_terreno), fmt_moeda(total_p_sac + aporte_obra_proprio), fmt_moeda(l_sac_real), 
-        f"{roi_sac:.2f}%", f"{moic_sac:.2f}x"
+        fmt_moeda(capital_ja_pago_terreno), fmt_moeda(capital_novo_sac), fmt_moeda(l_sac_real), 
+        f"{roi_sac:.2f}%", f"{roic_sac:.2f}%", f"{moic_sac:.2f}x"
     ]
-    st.table(pd.DataFrame({"Diretriz de Análise": labels[:8], "Resultado": val_sc}))
+    st.table(pd.DataFrame({"Diretriz de Análise": labels, "Resultado": val_sc}))
 
 with st.expander("▶️ Cenário C: Alavancagem Inteligente via Sistema Price"):
     val_prc = [
         fmt_moeda(v_vgv), fmt_moeda(quit_price), fmt_moeda(bolso_total_price),
-        fmt_moeda(capital_ja_pago_terreno), fmt_moeda(total_p_price + aporte_obra_proprio), fmt_moeda(l_price_real), 
-        f"{roi_price:.2f}%", f"{moic_price:.2f}x"
+        fmt_moeda(capital_ja_pago_terreno), fmt_moeda(capital_novo_price), fmt_moeda(l_price_real), 
+        f"{roi_price:.2f}%", f"{roic_price:.2f}%", f"{moic_price:.2f}x"
     ]
-    st.table(pd.DataFrame({"Diretriz de Análise": labels[:8], "Resultado": val_prc}))
+    st.table(pd.DataFrame({"Diretriz de Análise": labels, "Resultado": val_prc}))
 
 # =========================================================================
 # 6. FLUXO DETALHADO DO CRONOGRAMA MES A MES
