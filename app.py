@@ -106,35 +106,36 @@ cronograma_final.append({
 # =========================================================================
 # 4. CONCILIAÇÃO FINANCEIRA AVANÇADA (ROI + CAPITAL NOVO)
 # =========================================================================
-capital_ja_pago_terreno = v_terr - saldo_devedor_terreno
+# A sobra do banco (1.8M - 1.518M = 282k) liquida parte do lote de 1M. O que sobra é o capital próprio exposto no lote:
+capital_restante_terreno = v_terr - (credito_bancario_total - v_obra)
+custo_projeto_total = v_terr + v_obra
+
 aporte_obra_proprio = max(0.0, (v_obra + saldo_devedor_terreno) - credito_bancario_total)
 
-# Bases de Desembolso (Bolso Cheio)
-bolso_total_sac = capital_ja_pago_terreno + total_p_sac + aporte_obra_proprio
-bolso_total_price = capital_ja_pago_terreno + total_p_price + aporte_obra_proprio
+# Ajuste das bases de desembolso total refletindo o capital remanescente do lote
+bolso_total_sac = capital_restante_terreno + total_p_sac + aporte_obra_proprio
+bolso_total_price = capital_restante_terreno + total_p_price + aporte_obra_proprio
 
-# ISOLAMENTO DO CAPITAL NOVO (Exclui o patrimônio que já estava imobilizado no Terreno Quitado)
+# Fluxo de capital novo colocado em movimento (Exclui a entrada do terreno quitado)
 capital_novo_sac = total_p_sac + aporte_obra_proprio
 capital_novo_price = total_p_price + aporte_obra_proprio
 
 # Lucros Líquidos Reais
-custo_projeto_total = v_terr + v_obra
 l_proprio = v_vgv - custo_projeto_total
 l_sac_real = v_vgv - quit_sac - bolso_total_sac
 l_price_real = v_vgv - quit_price - bolso_total_price
 
-# ROI Tradicional (Sobre o Bolso Total)
+# ROI Tradicional corrigido sobre a base do bolso ajustada
 roi_proprio = (l_proprio / custo_projeto_total) * 100
 roi_sac = (l_sac_real / bolso_total_sac) * 100
 roi_price = (l_price_real / bolso_total_price) * 100
 
-# NOVA MÉTRICA: RETORNO SOBRE O CAPITAL NOVO (ROIC)
-# Para o cenário à vista, todo o capital de obra é considerado capital novo
+# Retorno sobre o Capital Novo (ROIC)
 roic_proprio = (l_proprio / v_obra) * 100 if v_obra > 0 else 0.0
 roic_sac = (l_sac_real / capital_novo_sac) * 100 if capital_novo_sac > 0 else 0.0
 roic_price = (l_price_real / capital_novo_price) * 100 if capital_novo_price > 0 else 0.0
 
-# Múltiplos MOC/MOIC
+# Múltiplos
 moic_proprio = v_vgv / custo_projeto_total
 moic_sac = (v_vgv - quit_sac) / bolso_total_sac
 moic_price = (v_vgv - quit_price) / bolso_total_price
@@ -165,17 +166,19 @@ with st.expander("▶️ Cenário A: Execução Pura com Recursos Próprios (Sem
     st.table(pd.DataFrame({"Diretriz de Análise": labels, "Resultado": val_pr}))
 
 with st.expander("▶️ Cenário B: Alavancagem Inteligente via Sistema SAC"):
+    # CORREÇÃO CRÍTICA AQUI: val_sc agora plota capital_restante_terreno na linha correspondente
     val_sc = [
         fmt_moeda(v_vgv), fmt_moeda(quit_sac), fmt_moeda(bolso_total_sac),
-        fmt_moeda(capital_ja_pago_terreno), fmt_moeda(capital_novo_sac), fmt_moeda(l_sac_real), 
+        fmt_moeda(capital_restante_terreno), fmt_moeda(capital_novo_sac), fmt_moeda(l_sac_real), 
         f"{roi_sac:.2f}%", f"{roic_sac:.2f}%", f"{moic_sac:.2f}x"
     ]
     st.table(pd.DataFrame({"Diretriz de Análise": labels, "Resultado": val_sc}))
 
 with st.expander("▶️ Cenário C: Alavancagem Inteligente via Sistema Price"):
+    # CORREÇÃO CRÍTICA AQUI: val_prc agora plota capital_restante_terreno na linha correspondente
     val_prc = [
         fmt_moeda(v_vgv), fmt_moeda(quit_price), fmt_moeda(bolso_total_price),
-        fmt_moeda(capital_ja_pago_terreno), fmt_moeda(capital_novo_price), fmt_moeda(l_price_real), 
+        fmt_moeda(capital_restante_terreno), fmt_moeda(capital_novo_price), fmt_moeda(l_price_real), 
         f"{roi_price:.2f}%", f"{roic_price:.2f}%", f"{moic_price:.2f}x"
     ]
     st.table(pd.DataFrame({"Diretriz de Análise": labels, "Resultado": val_prc}))
