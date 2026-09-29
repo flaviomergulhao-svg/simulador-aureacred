@@ -49,9 +49,9 @@ tranches = {0: valor_tranche_dinamica, 2: valor_tranche_dinamica, 4: valor_tranc
 st.sidebar.info(f"💳 **Crédito Máximo Configurado:** {fmt_moeda(credito_bancario_total)}")
 
 # =========================================================================
-# 3. MOTOR DE SIMULAÇÃO REESTRUTURADO (PREVENÇÃO DE ERROS DE TIPO TRAVADA)
+# 3. MOTOR DE SIMULAÇÃO REESTRUTURADO
 # =========================================================================
-# CORREÇÃO CRÍTICA: Extraindo o valor numérico da chave 0 para evitar conflitos de dicionário
+# Travando a busca do valor da chave 0 do dicionário de tranches para evitar TypeError
 s_sac = tranches[0] + v_taoc
 s_pr = tranches[0] + v_taoc
 
@@ -137,6 +137,7 @@ roic_proprio = (l_proprio / v_obra) * 100 if v_obra > 0 else 0.0
 roic_sac = (l_sac_real / capital_novo_sac) * 100 if capital_novo_sac > 0 else 0.0
 roic_price = (l_price_real / capital_novo_price) * 100 if capital_novo_price > 0 else 0.0
 
+# Múltiplos
 moic_proprio = v_vgv / custo_projeto_total
 moic_sac = (v_vgv - quit_sac) / bolso_total_sac
 moic_price = (v_vgv - quit_price) / bolso_total_price
@@ -180,7 +181,7 @@ with col2:
 st.info(f"💡 **Tese de Investimento para o Cliente:** Ao invés de ficar travado com R$ 1.000.000,00 da venda simples, a **Alavancagem** permite injetar de forma parcelada {fmt_moeda(capital_novo_sac)} ao longo de {m_venda} meses. No final, o investidor **recupera o valor original do terreno e embolsa mais {fmt_moeda(l_sac_real)} de lucro líquido puro**, extraindo a máxima potência sobre cada real investido.")
 
 # =========================================================================
-# 7. MATRIZ COMPARATIVA GERAL DETALHADA
+# 7. MATRIZ COMPARATIVA GERAL DETALHADA (BLINDADA CONTRA SYNTAXERRORS)
 # =========================================================================
 st.markdown("---")
 st.header("📊 Comparativo Detalhado de Estruturação de Capital")
@@ -201,21 +202,16 @@ diretrizes_completas = [
     "📈 Múltiplo de Capital Realizado (MOIC)"
 ]
 
-col_sem_alavancagem = [
-    fmt_moeda(v_vgv),
-    fmt_moeda(0.0),
-    fmt_moeda(0.0),
-    fmt_moeda(0.0),
-    fmt_moeda(v_vgv),
-    fmt_moeda(custo_projeto_total),
-    fmt_moeda(v_terr),
-    fmt_moeda(v_obra),
-    fmt_moeda(l_proprio),
-    f"{roi_proprio:.2f}%",
-    f"{roic_proprio:.2f}%",
-    f"{moic_proprio:.2f}x"
-]
+# Variáveis convertidas de forma isolada antes do dicionário para blindagem absoluta
+str_roi_proprio = f"{roi_proprio:.2f}%"
+str_roi_sac = f"{roi_sac:.2f}%"
+str_roi_price = f"{roi_price:.2f}%"
 
-col_alavancagem_sac = [
-    fmt_moeda(v_vgv),
-    fmt_moeda(credito_bancario_total),
+str_roic_proprio = f"{roic_proprio:.2f}%"
+str_roic_sac = f"{roic_sac:.2f}%"
+str_roic_price = f"{roic_price:.2f}%"
+
+str_moic_proprio = f"{moic_proprio:.2f}x"
+str_moic_sac = f"{moic_sac:.2f}x"
+str_moic_price = f"{moic_price:.2f}x"
+
