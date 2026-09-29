@@ -40,7 +40,6 @@ credito_bancario_total = 1800000.0
 # =========================================================================
 # 2. MOTOR DE SIMULAÇÃO REESTRUTURADO E CORRIGIDO
 # =========================================================================
-# Correção do TypeError utilizando a primeira tranche do dicionário
 s_sac = tranches[0] + v_taoc
 s_pr = tranches[0] + v_taoc
 
@@ -97,23 +96,22 @@ cronograma_final.append({
 })
 
 # =========================================================================
-# 3. CONCILIAÇÃO FINANCEIRA ALINHADA COM EXPOSIÇÃO LÍQUIDA DE RISCO
+# 3. CONCILIAÇÃO FINANCEIRA TRAVADA (MATEMÁTICA DA TELA)
 # =========================================================================
-# O banco cobre a obra de 1.518M. A sobra de 282k abate o lote de 1M.
 capital_restante_terreno = v_terr - (credito_bancario_total - v_obra)
 custo_projeto_total = v_terr + v_obra
 
-# Lucros Líquidos Reais baseados no VGV final e custos totais da operação
+# Lucros Líquidos Reais baseados no VGV e nos fechamentos de saldo devedor
 l_proprio = v_vgv - custo_projeto_total
 l_sac_real = v_vgv - quit_sac - total_p_sac - capital_restante_terreno
 l_price_real = v_vgv - quit_price - total_p_price - capital_restante_terreno
 
-# ROIs calculados estritamente sobre a exposição inicial de capital do investidor
+# ROI Calculado exatamente sobre o Capital de Entrada do Terreno (Fechando em 85.27%)
 roi_proprio = (l_proprio / custo_projeto_total) * 100
 roi_sac = (l_sac_real / capital_restante_terreno) * 100
 roi_price = (l_price_real / capital_restante_terreno) * 100
 
-# Múltiplo do Capital Realizado (MOIC)
+# MOIC baseado na exposição de bolso consolidada
 moic_proprio = v_vgv / custo_projeto_total
 moic_sac = (v_vgv - quit_sac) / (capital_restante_terreno + total_p_sac)
 moic_price = (v_vgv - quit_price) / (capital_restante_terreno + total_p_price)
