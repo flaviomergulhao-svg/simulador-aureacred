@@ -25,12 +25,13 @@ if status_terreno == "Não":
 else:
     saldo_devedor_terreno = 0.00
 
-st.sidebar.subheader("Encargos e Taxas")
+st.sidebar.subheader("Encargos e Prazos")
 tx_juros = st.sidebar.number_input("Taxa Financiamento (% a.m.)", min_value=0.1, max_value=5.0, value=1.45, step=0.01) / 100.0
 v_taoc = st.sidebar.number_input("Taxa de Estruturação (TAC)", min_value=0.0, value=80000.0, step=5000.0, format="%.2f")
 tx_cdi = st.sidebar.number_input("Rendimento do Caixa Preservado (% a.m. CDI)", min_value=0.1, max_value=3.0, value=0.85, step=0.05) / 100.0
 
-m_venda = 18 
+# NOVA BARRA DE AJUSTE DINÂMICO PEDIDA
+m_venda = st.sidebar.slider("Prazo para Venda/Quitação (Meses)", min_value=6, max_value=48, value=18, step=1)
 prazo_contrato = 240
 
 # Tranches rígidas de R$ 360k do cenário de LTV de 50%
@@ -38,7 +39,7 @@ tranches = {0: 360000.0, 2: 360000.0, 4: 360000.0, 6: 360000.0, 8: 360000.0}
 credito_bancario_total = 1800000.0
 
 # =========================================================================
-# 2. MOTOR DE SIMULAÇÃO REESTRUTURADO E CORRIGIDO
+# 2. MOTOR DE SIMULAÇÃO DINÂMICO
 # =========================================================================
 s_sac = tranches[0] + v_taoc
 s_pr = tranches[0] + v_taoc
@@ -96,26 +97,25 @@ cronograma_final.append({
 })
 
 # =========================================================================
-# 3. CONCILIAÇÃO FINANCEIRA CORRIGIDA (BASEADA NO DESEMBOLSO TOTAL DO BOLSO)
+# 3. CONCILIAÇÃO FINANCEIRA COM PRAZO DINÂMICO (ROI CORRIGIDO)
 # =========================================================================
 capital_restante_terreno = v_terr - (credito_bancario_total - v_obra)
 custo_projeto_total = v_terr + v_obra
 
-# Definição clara do bolso cheio exposto (Terreno próprio + parcelas acumuladas)
+# Exposição total acumulada de bolso (Entrada do terreno + parcelas do prazo selecionado)
 bolso_total_sac = capital_restante_terreno + total_p_sac
 bolso_total_price = capital_restante_terreno + total_p_price
 
-# Lucros Líquidos Reais
+# Lucros Líquidos Reais baseados no tempo total de carregamento da dívida
 l_proprio = v_vgv - custo_projeto_total
 l_sac_real = v_vgv - quit_sac - bolso_total_sac
 l_price_real = v_vgv - quit_price - bolso_total_price
 
-# CORREÇÃO CRÍTICA DO ROI: Dividindo o Lucro pelo DESEMBOLSO TOTAL (Exposição de Caixa Consolidada)
+# ROIs recalculados sobre o bolso exposto total consolidado (Travado em 49.02% para os 18 meses)
 roi_proprio = (l_proprio / custo_projeto_total) * 100
 roi_sac = (l_sac_real / bolso_total_sac) * 100
 roi_price = (l_price_real / bolso_total_price) * 100
 
-# MOIC baseado na exposição de bolso consolidada
 moic_proprio = v_vgv / custo_projeto_total
 moic_sac = (v_vgv - quit_sac) / bolso_total_sac
 moic_price = (v_vgv - quit_price) / bolso_total_price
@@ -123,11 +123,11 @@ moic_price = (v_vgv - quit_price) / bolso_total_price
 # =========================================================================
 # 4. INTERFACE GRÁFICA DO STREAMLIT
 # =========================================================================
-st.header("1. Simulação de Cenários de Capital (Métricas Corrigidas)")
+st.header(f"1. Simulação de Cenários de Capital ({m_venda} Meses)")
 
 labels = [
     "Valor Geral de Vendas (VGV)", 
-    "(-) Saldo de Dívida para Quitação (Mês 18)", 
+    "(-) Saldo de Dívida para Quitação Final", 
     "(-) Investimento Total Desembolsado (Bolso do Cliente)", 
     "  • Capital de Entrada (Terreno - Fração de Capital Próprio)", 
     "  • Custos de Parcelas Mensais Acumuladas no Período",
@@ -164,6 +164,6 @@ with st.expander("▶️ Cenário C: Alavancagem Inteligente via Sistema Price")
 # 5. FLUXO DETALHADO DO CRONOGRAMA MES A MES
 # =========================================================================
 st.header("2. Evolução Patrimonial e Cronograma Mensal")
-st.caption("Visão detalhada do fluxo de aportes, prestações e amortização contínua do saldo devedor de saída.")
+st.caption(f"Visão detalhada do fluxo acumulado para uma estratégia de saída programada em {m_venda} meses.")
 df_cronograma = pd.DataFrame(cronograma_final)
 st.dataframe(df_cronograma, use_container_width=True, hide_index=True)
