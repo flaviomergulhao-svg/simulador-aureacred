@@ -51,11 +51,11 @@ st.sidebar.info(f"💳 **Crédito Máximo Configurado:** {fmt_moeda(credito_banc
 # =========================================================================
 # 3. MOTOR DE SIMULAÇÃO REESTRUTURADO
 # =========================================================================
-s_sac = tranches + v_taoc
-s_pr = tranches + v_taoc
+s_sac = tranches[0] + v_taoc
+s_pr = tranches[0] + v_taoc
 
 total_p_sac, total_p_price = 0.0, 0.0
-total_aporte_obra = tranches
+total_aporte_obra = tranches[0]
 
 cronograma_final = []
 amort_sac_fixa = (credito_bancario_total + v_taoc) / prazo_contrato
@@ -87,7 +87,7 @@ for i in range(m_venda + 1):
 
     cronograma_final.append({
         "Período": f"Mês {i}",
-        "Aporte Obra": fmt_moeda(tranches) if i == 0 else fmt_moeda(ap_val),
+        "Aporte Obra": fmt_moeda(tranches[0]) if i == 0 else fmt_moeda(ap_val),
         "Parcela SAC": fmt_moeda(p_sac_v),
         "Saldo SAC": fmt_moeda(max(0.0, s_sac)),
         "Parcela PRICE": fmt_moeda(p_pr_v),
@@ -179,13 +179,12 @@ with col2:
 st.info(f"💡 **Tese de Investimento para o Cliente:** Ao invés de ficar travado com R$ 1.000.000,00 da venda simples, a **Alavancagem** permite injetar de forma parcelada {fmt_moeda(capital_novo_sac)} ao longo de {m_venda} meses. No final, o investidor **recupera o valor original do terreno e embolsa mais {fmt_moeda(l_sac_real)} de lucro líquido puro**, extraindo a máxima potência sobre cada real investido.")
 
 # =========================================================================
-# 7. MATRIZ COMPARATIVA GERAL DETALHADA (RETORNO DO DETALHAMENTO DAS 12 LINHAS)
+# 7. MATRIZ COMPARATIVA GERAL DETALHADA
 # =========================================================================
 st.markdown("---")
 st.header("📊 Comparativo Detalhado de Estruturação de Capital")
 st.caption("Visão matricial aberta contendo a origem de cada indicador físico, bancário e de bolso.")
 
-# As 12 diretrizes completas de auditoria que haviam sumido
 diretrizes_completas = [
     "Valor Geral de Vendas (VGV)",
     "(-) Crédito Estruturado Contratado (5 Tranches)",
@@ -221,3 +220,5 @@ col_alavancagem_sac = [
     fmt_moeda(credito_bancario_total),
     fmt_moeda(max(0.0, credito_bancario_total - v_obra)),
     fmt_moeda(quit_sac),
+    fmt_moeda(v_vgv - quit_sac),
+    fmt_moeda(bolso_total_sac),
