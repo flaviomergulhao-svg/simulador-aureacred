@@ -3,12 +3,10 @@ import pandas as pd
 
 st.set_page_config(layout="wide", page_title="Áurea Cred - Intelligence", page_icon="🛡️")
 
-# Cabeçalho Executivo de Alto Padrão
 st.title("🛡️ Painel de Inteligência Financeira & Eficiência de Capital")
 st.subheader("Análise Estratégica para Incorporação de Alto Padrão")
 st.caption("Apresentação Dinâmica de Cenários de Alavancagem Patrimonial")
 
-# Função auxiliar para formatação monetária brasileira rigorosa
 def fmt_moeda(valor):
     if valor < 0:
         return f"- R$ {abs(valor):,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
@@ -37,22 +35,20 @@ m_venda = st.sidebar.slider("Prazo para Construção / Venda (Meses)", min_value
 prazo_contrato = 240
 
 # =========================================================================
-# 2. CÁLCULO DO TETO DE CRÉDITO E DAS TRANCHES (APENAS FLUXO NUMÉRICO)
+# 2. CÁLCULO DO TETO DE CRÉDITO E DAS TRANCHES
 # =========================================================================
 limite_vgv = v_vgv * 0.50
 limite_necessidade = v_obra + saldo_devedor_terreno
 credito_bancario_total = min(limite_vgv, limite_necessidade)
 
-# Calculamos o valor de cada tranche isolado numericamente
 val_tranche = credito_bancario_total / 5.0
 tranches_map = {0: val_tranche, 2: val_tranche, 4: val_tranche, 6: val_tranche, 8: val_tranche}
 
 st.sidebar.info(f"💳 **Crédito Máximo Configurado:** {fmt_moeda(credito_bancario_total)}")
 
 # =========================================================================
-# 3. MOTOR DE SIMULAÇÃO REESTRUTURADO (TOTALMENTE SEPARADO)
+# 3. MOTOR DE SIMULAÇÃO REESTRUTURADO
 # =========================================================================
-# Inicialização baseada no número puro de largada para blindar contra TypeErrors
 s_sac = val_tranche + v_taoc
 s_pr = val_tranche + v_taoc
 
@@ -73,13 +69,11 @@ for idx in range(m_venda + 1):
     p_pr_v = 0.00
     
     if idx > 0:
-        # SAC
         j_sac_m = s_sac * tx_juros
         p_sac_v = amort_sac_fixa + j_sac_m
         s_sac -= amort_sac_fixa
         total_p_sac += p_sac_v
 
-        # PRICE
         j_pr_m = s_pr * tx_juros
         fator_pmt = (tx_juros * ((1 + tx_juros)**prazo_contrato)) / (((1 + tx_juros)**prazo_contrato) - 1)
         p_pr_v = s_pr * fator_pmt
@@ -125,22 +119,18 @@ bolso_total_price = capital_restante_terreno + total_p_price + aporte_obra_propr
 capital_novo_sac = total_p_sac + aporte_obra_proprio
 capital_novo_price = total_p_price + aporte_obra_proprio
 
-# Lucros Líquidos Reais
 l_proprio = v_vgv - custo_projeto_total
 l_sac_real = v_vgv - quit_sac - bolso_total_sac
 l_price_real = v_vgv - quit_price - bolso_total_price
 
-# ROI Tradicional
 roi_proprio = (l_proprio / custo_projeto_total) * 100.0
 roi_sac = (l_sac_real / bolso_total_sac) * 100.0
 roi_price = (l_price_real / bolso_total_price) * 100.0
 
-# Retorno sobre o Capital Novo (ROIC)
 roic_proprio = (l_proprio / v_obra) * 100.0 if v_obra > 0 else 0.0
 roic_sac = (l_sac_real / capital_novo_sac) * 100.0 if capital_novo_sac > 0 else 0.0
 roic_price = (l_price_real / capital_novo_price) * 100.0 if capital_novo_price > 0 else 0.0
 
-# Múltiplos
 moic_proprio = v_vgv / custo_projeto_total
 moic_sac = (v_vgv - quit_sac) / bolso_total_sac
 moic_price = (v_vgv - quit_price) / bolso_total_price
@@ -185,27 +175,32 @@ with col2:
 st.info(f"💡 **Tese de Investimento para o Cliente:** Ao invés de ficar travado com R$ 1.000.000,00 da venda simples, a **Alavancagem** permite injetar de forma parcelada {fmt_moeda(capital_novo_sac)} ao longo de {m_venda} meses. No final, o investidor **recupera o valor original do terreno e embolsa mais {fmt_moeda(l_sac_real)} de lucro líquido puro**, extraindo a máxima potência sobre cada real investido.")
 
 # =========================================================================
-# 7. MATRIZ COMPARATIVA GERAL DETALHADA (REESTRUTURAÇÃO COMPLETA ANTI-FALHAS)
+# 7. MATRIZ COMPARATIVA MASTER (DIRETA E SEGUIDA SEM ARRAYS SEPARADOS)
 # =========================================================================
 st.markdown("---")
 st.header("📊 Comparativo Detalhado de Estruturação de Capital")
 st.caption("Visão matricial aberta contendo a origem de cada indicador físico, bancário e de bolso.")
 
-diretrizes_completas = [
-    "Valor Geral de Vendas (VGV)",
-    "(-) Crédito Estruturado Contratado (5 Tranches)",
-    "(-) Saldo Injetado como Capital de Giro",
-    "(-) Dívida de Quitação (Mês de Saída)",
-    "(=) Receita Líquida pós-Quitação",
-    "(-) Investimento Líquido Desembolsado do Bolso",
-    "  • Capital de Terreno (Fração Própria Exposta)",
-    "  • Desembolso de Parcelas Acumuladas (Obra)",
-    "(=) LUCRO OPERACIONAL LÍQUIDO REALIZADO",
-    "📊 ROI Tradicional (Sobre o Bolso Total)",
-    "🚀 Retorno sobre o Capital Novo (Eficiência do Fluxo)",
-    "📈 Múltiplo de Capital Realizado (MOIC)"
-]
-
-# Injetando Strings estáticas e formatadas sem misturar código de controle no DataFrame
-c_view_1 = [
-    fmt_moeda(v_vgv), fmt_moeda(0.0), fmt_moeda(0.0), fmt_moeda(0.0), fmt_moeda(v_vgv),
+df_comparativo_master = pd.DataFrame({
+    "Diretriz de Análise": [
+        "Valor Geral de Vendas (VGV)",
+        "(-) Crédito Estruturado Contratado (5 Tranches)",
+        "(-) Saldo Injetado como Capital de Giro",
+        "(-) Dívida de Quitação (Mês de Saída)",
+        "(=) Receita Líquida pós-Quitação",
+        "(-) Investimento Líquido Desembolsado do Bolso",
+        "  • Capital de Terreno (Fração Própria Exposta)",
+        "  • Desembolso de Parcelas Acumuladas (Obra)",
+        "(=) LUCRO OPERACIONAL LÍQUIDO REALIZADO",
+        "📊 ROI Tradicional (Sobre o Bolso Total)",
+        "🚀 Retorno sobre o Capital Novo (Eficiência do Fluxo)",
+        "📈 Múltiplo de Capital Realizado (MOIC)"
+    ],
+    "Sem Alavancagem (À Vista)": [
+        fmt_moeda(v_vgv), fmt_moeda(0.0), fmt_moeda(0.0), fmt_moeda(0.0), fmt_moeda(v_vgv),
+        fmt_moeda(custo_projeto_total), fmt_moeda(v_terr), fmt_moeda(v_obra), fmt_moeda(l_proprio),
+        f"{roi_proprio:.2f}%", f"{roic_proprio:.2f}%", f"{moic_proprio:.2f}x"
+    ],
+    "Alavancagem (Sistema SAC)": [
+        fmt_moeda(v_vgv), fmt_moeda(credito_bancario_total), fmt_moeda(max(0.0, credito_bancario_total - v_obra)),
+        fmt_moeda(quit_sac), fmt_moeda(v_vgv - quit_sac), fmt_moeda(bolso_total_sac),
