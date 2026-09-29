@@ -172,30 +172,39 @@ with col2:
         st.write(f"• **Lucro Real Geral no Período:** {fmt_moeda(l_sac_real)}")
         st.success(f"🏆 Lucro Realizado com Eficiência Financeira de **{roic_sac:.2f}%** sobre o dinheiro novo.")
 
-st.info(f"💡 **Tese de Investimento para o Cliente:** Ao invés de ficar travado com R$ 1.000.000,00 da venda simples, a **Alavancagem** permite injetar de forma parcelada {fmt_moeda(capital_novo_sac)} ao longo de {m_venda} meses. No final, the investidor **recupera o valor original do terreno e embolsa mais {fmt_moeda(l_sac_real)} de lucro líquido puro**, extraindo a máxima potência sobre cada real investido.")
+st.info(f"💡 **Tese de Investimento para o Cliente:** Ao invés de ficar travado com R$ 1.000.000,00 da venda simples, a **Alavancagem** permite injetar de forma parcelada {fmt_moeda(capital_novo_sac)} ao longo de {m_venda} meses. No final, o investidor **recupera o valor original do terreno e embolsa mais {fmt_moeda(l_sac_real)} de lucro líquido puro**, extraindo a máxima potência sobre cada real investido.")
 
 # =========================================================================
-# 7. MATRIZ DETALHADA - NOVA ARQUITETURA DE INDICAÇÃO INDEXADA (ANTI-ERROS)
+# 7. MATRIZ COMPARATIVA MASTER (ARQUITETURA TOTALMENTE LINEAR ANTI-FALHAS)
 # =========================================================================
 st.markdown("---")
 st.header("📊 Comparativo Detalhado de Estruturação de Capital")
 st.caption("Visão matricial aberta contendo a origem de cada indicador físico, bancário e de bolso.")
 
-# Dicionários com chaves estritamente numéricas de ID para blindagem total contra quebras de texto
-v_vista_map = {
-    1: fmt_moeda(v_vgv), 2: fmt_moeda(0.0), 3: fmt_moeda(0.0), 4: fmt_moeda(0.0), 5: fmt_moeda(v_vgv),
-    6: fmt_moeda(custo_projeto_total), 7: fmt_moeda(v_terr), 8: fmt_moeda(v_obra), 9: fmt_moeda(l_proprio),
-    10: f"{roi_proprio:.2f}%", 11: f"{roic_proprio:.2f}%", 12: f"{moic_proprio:.2f}x"
-}
+# Criação do DataFrame estrutural limpo
+df_master_final = pd.DataFrame()
 
-v_sac_map = {
-    1: fmt_moeda(v_vgv), 2: fmt_moeda(credito_bancario_total), 3: fmt_moeda(max(0.0, credito_bancario_total - v_obra)),
-    4: fmt_moeda(quit_sac), 5: fmt_moeda(v_vgv - quit_sac), 6: fmt_moeda(bolso_total_sac),
-    7: fmt_moeda(capital_restante_terreno), 8: fmt_moeda(capital_novo_sac), 9: fmt_moeda(l_sac_real),
-    10: f"{roi_sac:.2f}%", 11: f"{roic_sac:.2f}%", 12: f"{moic_sac:.2f}x"
-}
+# Injeção direta por tuplas independentes - ISOLAMENTO ABSOLUTO DE CONFLITOS DE CACHE
+df_master_final["Diretriz de Analise"] = (
+    "Valor Geral de Vendas (VGV)",
+    "(-) Credito Estruturado Contratado (5 Tranches)",
+    "(-) Saldo Injetado como Capital de Giro",
+    "(-) Divida de Quitacao (Mes de Saida)",
+    "(=) Receita Liquida pos-Quitacao",
+    "(-) Investimento Liquido Desembolsado do Bolso",
+    "  * Capital de Terreno (Fracao Propria Exposta)",
+    "  * Desembolso de Parcelas Acumuladas (Obra)",
+    "(=) LUCRO OPERACIONAL LIQUIDO REALIZADO",
+    "ROI Tradicional (Sobre o Bolso Total)",
+    "Retorno sobre o Capital Novo (Eficiencia)",
+    "Multiplo de Capital Realizado (MOIC)"
+)
 
-v_price_map = {
-    1: fmt_moeda(v_vgv), 2: fmt_moeda(credito_bancario_total), 3: fmt_moeda(max(0.0, credito_bancario_total - v_obra)),
-    4: fmt_moeda(quit_price), 5: fmt_moeda(v_vgv - quit_price), 6: fmt_moeda(bolso_total_price),
-    7: fmt_moeda(capital_restante_terreno), 8: fmt_moeda(capital_novo_price), 9: fmt_moeda(l_price_real),
+df_master_final["Sem Alavancagem (A Vista)"] = (
+    fmt_moeda(v_vgv), fmt_moeda(0.0), fmt_moeda(0.0), fmt_moeda(0.0), fmt_moeda(v_vgv),
+    fmt_moeda(custo_projeto_total), fmt_moeda(v_terr), fmt_moeda(v_obra), fmt_moeda(l_proprio),
+    f"{roi_proprio:.2f}%", f"{roic_proprio:.2f}%", f"{moic_proprio:.2f}x"
+)
+
+df_master_final["Alavancagem (Sistema SAC)"] = (
+    fmt_moeda(v_vgv), fmt_moeda(credito_bancario_total), fmt_moeda(max(0.0, credito_bancario_total - v_obra)),
